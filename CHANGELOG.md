@@ -17,6 +17,9 @@ for continued use.
   translation, the removed `file()` builtin replaced with `open()`, and the `mock`
   backport swapped for the standard-library `unittest.mock` in tests. Behavioral
   fixes are tracked separately. ([#1])
+- Normalized the whole tree to 4-space indentation and consistent style with
+  `ruff format` (no behavioral change). ([#3])
 
 [Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...dev
 [#1]: https://github.com/amd-ph-core/srst2/issues/1
+[#3]: https://github.com/amd-ph-core/srst2/issues/3
