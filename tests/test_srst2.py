@@ -4,8 +4,8 @@ import os
 import sys
 import unittest
 
-from mock import MagicMock, patch
-from StringIO import StringIO
+from unittest.mock import MagicMock, patch
+from io import StringIO
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'scripts')))
 

@@ -48,7 +48,7 @@ def main():
 				locus_id = locus.split("__")[0] + "__" + locus.split("__")[1]
 				allele = locus.split("__")[2] + "__" + locus.split("__")[3]
 			out_file = args.pre + "__" + locus_id + ".fasta"
-			o = file(out_file,"a") # open seq file for appending
+			o = open(out_file,"a") # open seq file for appending
 			o.write(">" + strain + " " + locus + "\n")
 			o.write(str(record.seq) + "\n")
 			o.close()

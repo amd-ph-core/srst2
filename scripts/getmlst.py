@@ -23,7 +23,7 @@ from argparse import ArgumentParser
 import xml.dom.minidom as xml
 import urllib2 as url
 import re, os, glob
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 def parse_args():
 	parser = ArgumentParser(description='Download MLST datasets by species'
@@ -125,12 +125,12 @@ def main():
 		if info != None:
 			found_species.append(info)
 	if len(found_species) == 0:
-		print "No species matched your query."
+		print("No species matched your query.")
 		exit(1)
 	if len(found_species) > 1:
-		print "The following {} species match your query, please be more specific:".format(len(found_species))
+		print("The following {} species match your query, please be more specific:".format(len(found_species)))
 		for info in found_species:
-			print info.name
+			print(info.name)
 		exit(2)
 
 	assert len(found_species) == 1
@@ -176,22 +176,22 @@ def main():
 	log_file.close()
 	species_all_fasta_file.close()
 
-	print "\n  For SRST2, remember to check what separator is being used in this allele database"
+	print("\n  For SRST2, remember to check what separator is being used in this allele database")
 	head = os.popen('head -n 1 ' + species_all_fasta_filename).read().rstrip()
 	m = re.match('>(.*)([_-])(\d*)',head).groups()
 	if len(m)==3:
-		print
-		print "  Looks like --mlst_delimiter '" + m[1] + "'"
-		print
-		print "  " + head + "  --> -->  ",
-		print m
-	print 
-	print "  Suggested srst2 command for use with this MLST database:"
-	print
-	print "    srst2 --output test --input_pe *.fastq.gz --mlst_db " + species_name_underscores + '.fasta',
-	print "--mlst_definitions " + format(profile_filename),
-	print "--mlst_delimiter '" + m[1] + "'"
-	print
+		print()
+		print("  Looks like --mlst_delimiter '" + m[1] + "'")
+		print()
+		print("  " + head + "  --> -->  ", end=' ')
+		print(m)
+	print() 
+	print("  Suggested srst2 command for use with this MLST database:")
+	print()
+	print("    srst2 --output test --input_pe *.fastq.gz --mlst_db " + species_name_underscores + '.fasta', end=' ')
+	print("--mlst_definitions " + format(profile_filename), end=' ')
+	print("--mlst_delimiter '" + m[1] + "'")
+	print()
 
 
 if __name__ == '__main__':

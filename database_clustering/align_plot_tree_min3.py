@@ -11,18 +11,18 @@ fasta_directory = "/home/UNIMELB/hdashnow/resistance_database/by_gene"
 # Get the filenames of all files in the input directory "fasta_directory"
 files = []
 for f in os.listdir(fasta_directory):
-	if not f.startswith("."):
-            if f.endswith(".fsa") or f.endswith(".fasta"):
-		files.append('"'+os.path.join(fasta_directory,f)+'"') # need to surround with " " due to () in filenames
-print "Number of input files:", len(files)
+    if not f.startswith("."):
+        if f.endswith(".fsa") or f.endswith(".fasta"):
+            files.append('"'+os.path.join(fasta_directory,f)+'"') # need to surround with " " due to () in filenames
+print("Number of input files:", len(files))
 
 # Run muscle on each fasta file to produce an alignment for each
 # Save the alignment file names so that they can be used in R ape
 for f in files:
-	outfilename = (f+".aln").replace("(","").replace(")","")
-	#print outfilename
-        alignment = MuscleCommandline(input=f, out=outfilename)
-	#alignment()
+    outfilename = (f+".aln").replace("(","").replace(")","")
+    #print outfilename
+    alignment = MuscleCommandline(input=f, out=outfilename)
+    #alignment()
 
 
 r('''

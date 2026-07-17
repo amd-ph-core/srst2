@@ -102,7 +102,7 @@ def read_file_sets(args):
 						(baseName,read) = m.groups()
 						reverse_reads[baseName] = fastq
 					else:
-						print "Could not determine forward/reverse read status for input file " + fastq
+						print("Could not determine forward/reverse read status for input file " + fastq)
 			else:
 				# matches default Illumina file naming format, e.g. m.groups() = ('samplename', '_S1', '_L001', '_R1', '_001')
 				baseName, read = m.groups()[0], m.groups()[3]
@@ -111,8 +111,8 @@ def read_file_sets(args):
 				elif read == "_R2":
 					reverse_reads[baseName] = fastq
 				else:
-					print "Could not determine forward/reverse read status for input file " + fastq
-					print "  this file appears to match the MiSeq file naming convention (samplename_S1_L001_[R1]_001), but we were expecting [R1] or [R2] to designate read as forward or reverse?"
+					print("Could not determine forward/reverse read status for input file " + fastq)
+					print("  this file appears to match the MiSeq file naming convention (samplename_S1_L001_[R1]_001), but we were expecting [R1] or [R2] to designate read as forward or reverse?")
 					fileSets[file_name_before_ext] = fastq
 					num_single_readsets += 1
 		# store in pairs
@@ -123,17 +123,17 @@ def read_file_sets(args):
 			else:
 				fileSets[sample] = [forward_reads[sample]] # no reverse found
 				num_single_readsets += 1
-				print 'Warning, could not find pair for read:' + forward_reads[sample]
+				print('Warning, could not find pair for read:' + forward_reads[sample])
 		for sample in reverse_reads:
 			if sample not in fileSets:
 				fileSets[sample] = reverse_reads[sample] # no forward found
 				num_single_readsets += 1
-				print 'Warning, could not find pair for read:' + reverse_reads[sample]
+				print('Warning, could not find pair for read:' + reverse_reads[sample])
 
 	if num_paired_readsets > 0:
-		print 'Total paired readsets found:' + str(num_paired_readsets)
+		print('Total paired readsets found:' + str(num_paired_readsets))
 	if num_single_readsets > 0:
-		print 'Total single reads found:' + str(num_single_readsets)
+		print('Total single reads found:' + str(num_single_readsets))
 
 	return fileSets
 
@@ -143,7 +143,7 @@ class CommandError(Exception):
 def run_command(command, **kwargs):
 	'Execute a shell command and check the exit status and any O/S exceptions'
 	command_str = ' '.join(command)
-	print 'Running: {}'.format(command_str)
+	print('Running: {}'.format(command_str))
 	try:
 		exit_status = call(command, **kwargs)
 	except OSError as e:
@@ -213,9 +213,9 @@ def bowtie_index(fasta_files):
 	for fasta in fasta_files:
 		built_index = fasta + '.1.bt2'
 		if os.path.exists(built_index):
-			print 'Bowtie 2 index for {} is already built...'.format(fasta)
+			print('Bowtie 2 index for {} is already built...'.format(fasta))
 		else:
-			print 'Building bowtie2 index for {}...'.format(fasta)
+			print('Building bowtie2 index for {}...'.format(fasta))
 			run_command([get_bowtie_execs()[1], fasta, fasta])
 
 def get_samtools_exec():
@@ -233,9 +233,9 @@ def samtools_index(fasta_files):
 	for fasta in fasta_files:
 		built_index = fasta + '.fai'
 		if os.path.exists(built_index):
-			print 'Samtools index for {} is already built...'.format(fasta)
+			print('Samtools index for {} is already built...'.format(fasta))
 		else:
-			print 'Building samtools faidx index for {}...'.format(fasta)
+			print('Building samtools faidx index for {}...'.format(fasta))
 			run_command([get_samtools_exec(), 'faidx', fasta])
 
 def main():
@@ -292,10 +292,10 @@ def main():
 		cmd += " " + args.other_args
 
 		# print and run command
-		print cmd
-		print ''
+		print(cmd)
+		print('')
 		os.system('echo "' + cmd + '" | sbatch')
-		print ''
+		print('')
 
 if __name__ == '__main__':
 	main()

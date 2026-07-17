@@ -44,21 +44,21 @@ if __name__ == "__main__":
 	if options.output_file == "":
 		DoError("Please specify output fasta file using -o")
 	if options.seq_col != "":
-		print "Reading DNA sequences from table, column" + options.seq_col
+		print("Reading DNA sequences from table, column" + options.seq_col)
 		seqid_col = int(options.seq_col)
 	elif options.fasta_file != "":
 		if options.headers_col == "":
 			DoError("Please specify which column of the table contains identifiers that match the headers in the fasta file")
 		seqs_file_col = int(options.headers_col)
-		print "Reading DNA sequences from fasta file: " + options.fasta_file
+		print("Reading DNA sequences from fasta file: " + options.fasta_file)
 		for record in SeqIO.parse(open(options.fasta_file, "r"), "fasta"):
 			input_seqs[record.id] = record.seq
 			
 	else:
-		print DoError("Where are the sequences? If they are in the table, specify which column using -s. Otherwise provide a fasta file of sequence using -f and specify which column contains sequence identifiers that match the fasta headers, using -h")
+		print(DoError("Where are the sequences? If they are in the table, specify which column using -s. Otherwise provide a fasta file of sequence using -f and specify which column contains sequence identifiers that match the fasta headers, using -h"))
 
 	# read contents of a table and print as fasta
-	f = file(options.table_file,"r")
+	f = open(options.table_file,"r")
 	o = open(options.output_file, "w")
 	header = []
 	for line in f:
@@ -81,7 +81,7 @@ if __name__ == "__main__":
 				if seqs_file_id in input_seqs:
 					record = SeqRecord(input_seqs[seqs_file_id],id=db_id, description=db_id)
 				else:
-					print "Warning, couldn't find a sequence in the fasta file matching this id: " + seqs_file_id
+					print("Warning, couldn't find a sequence in the fasta file matching this id: " + seqs_file_id)
 				
 			else:
 				"??"

@@ -50,7 +50,7 @@ def extract_allele_name(gene_allele):
 
 def main():
 	args = parse_args()
-	outfile = file(args.outfile,"w")
+	outfile = open(args.outfile,"w")
 	outfile.write("seqID,clusterid,gene,allele,cluster_contains_multiple_genes,gene_found_in_multiple_clusters\n")
 	 
 	database = {}
