@@ -35,7 +35,7 @@ def parse_args():
 # print table of mlst results + gene results for all samples
 def compile_results(args,mlst_results,db_results,sample_metadata_hashes,compiled_output_file):
 
-	o = file(compiled_output_file,"w")
+	o = open(compiled_output_file,"w")
 	
 	# get list of all samples and genes present in these datasets
 	sample_list = [] # each entry is a sample present in at least one db
@@ -62,7 +62,7 @@ def compile_results(args,mlst_results,db_results,sample_metadata_hashes,compiled
 				if mlst_cols == 0:
 					mlst_header_string = test_string
 			else:
-				test_string = mlst_result[mlst_result.keys()[0]] # no header line?
+				test_string = mlst_result[list(mlst_result.keys())[0]] # no header line?
 			test_string_split = test_string.split("\t")
 			this_mlst_cols = len(test_string)
 			
@@ -107,7 +107,7 @@ def compile_results(args,mlst_results,db_results,sample_metadata_hashes,compiled
 					if variable not in variable_list:
 						variable_list.append(variable)
 						
-	print variable_list
+	print(variable_list)
 						
 	if "Sample" in sample_list:
 		sample_list.remove("Sample")
@@ -177,8 +177,8 @@ def compile_results(args,mlst_results,db_results,sample_metadata_hashes,compiled
 	
 	# log ST counts
 	if len(mlst_results_master) > 0:
-		logging.info("Detected " + str(len(st_counts.keys())) + " STs: ")
-		sts = st_counts.keys()
+		logging.info("Detected " + str(len(list(st_counts.keys()))) + " STs: ")
+		sts = list(st_counts.keys())
 		sts.sort()
 		for st in sts:
 			logging.info("ST" + st + "\t" + str(st_counts[st]))

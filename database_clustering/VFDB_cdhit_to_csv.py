@@ -26,7 +26,7 @@ def parse_args():
 
 def main():
 	args = parse_args()
-	outfile = file(args.outfile,"w")
+	outfile = open(args.outfile,"w")
 	outfile.write("seqID,clusterid,gene,allele,DNA,annotation\n")
 
 	database = {} # key = clusterid, value = list of seqIDs

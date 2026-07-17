@@ -29,7 +29,7 @@ from itertools import groupby
 from operator import itemgetter
 from collections import OrderedDict
 try:
-	from version import srst2_version
+	from .version import srst2_version
 except:
 	srst2_version = "version unknown"
 
@@ -305,8 +305,8 @@ def parse_fai(fai_file,db_type,delimiter):
 				gene_clusters.append(gene_cluster)
 
 	if len(delimiter_check) > 0:
-		print "Warning! MLST delimiter is " + delimiter + " but these genes may violate the pattern and cause problems:"
-		print ",".join(delimiter_check)
+		print("Warning! MLST delimiter is " + delimiter + " but these genes may violate the pattern and cause problems:")
+		print(",".join(delimiter_check))
 
 	return size, gene_clusters, unique_gene_symbols, unique_allele_symbols, gene_cluster_symbols
 
@@ -504,17 +504,17 @@ def score_alleles(args, mapping_files_pre, hash_alignment, hash_max_depth, hash_
 		avg_depth_allele, coverage_allele, mismatch_allele, indel_allele, missing_allele,
 		size_allele, next_to_del_depth_allele, run_type,unique_gene_symbols, unique_allele_symbols):
 	# sort into hash for each gene locus
-	depth_by_gene = group_allele_dict_by_gene(dict( (allele,val) for (allele,val) in avg_depth_allele.items() \
+	depth_by_gene = group_allele_dict_by_gene(dict( (allele,val) for (allele,val) in list(avg_depth_allele.items()) \
 			if (run_type == "mlst") or (coverage_allele[allele] > args.min_coverage) ),
 			run_type,args,
 			unique_gene_symbols,unique_allele_symbols)
 	stat_depth_by_gene = dict(
-			(gene,max(alleles.values())) for (gene,alleles) in depth_by_gene.items()
+			(gene,max(alleles.values())) for (gene,alleles) in list(depth_by_gene.items())
 			)
 	allele_to_gene = dict_of_dicts_inverted_ind(depth_by_gene)
 
 	if args.save_scores:
-		scores_output = file(mapping_files_pre + '.scores', 'w')
+		scores_output = open(mapping_files_pre + '.scores', 'w')
 		scores_output.write("Allele\tScore\tAvg_depth\tEdge1_depth\tEdge2_depth\tPercent_coverage\tSize\tMismatches\tIndels\tTruncated_bases\tDepthNeighbouringTruncation\tmaxMAF\tLeastConfident_Rate\tLeastConfident_Mismatches\tLeastConfident_Depth\tLeastConfident_Pvalue\n")
 
 	scores = {} # key = allele, value = score
@@ -552,7 +552,7 @@ def score_alleles(args, mapping_files_pre, hash_alignment, hash_max_depth, hash_
 			# Fit linear model to observed Pval distribution vs expected Pval distribution (QQ plot)
 			pvals.sort(reverse=True)
 			len_obs_pvals = len(pvals)
-			exp_pvals = range(1, len_obs_pvals + 1)
+			exp_pvals = list(range(1, len_obs_pvals + 1))
 			exp_pvals2 = [-log(float(ep) / (len_obs_pvals + 1), 10) for ep in exp_pvals]
 
 			# Slope is score
@@ -697,7 +697,7 @@ def run_bowtie(mapping_files_pre,sample_name,fastqs,args,db_name,db_full_path):
 		try:
 			command += ['-u',str(int(args.stop_after))]
 		except ValueError:
-			print "WARNING. You asked to stop after mapping '" + args.stop_after + "' reads. I don't understand this, and will map all reads. Please speficy an integer with --stop_after or leave this as default to map 1 million reads."
+			print("WARNING. You asked to stop after mapping '" + args.stop_after + "' reads. I don't understand this, and will map all reads. Please speficy an integer with --stop_after or leave this as default to map 1 million reads.")
 
 	if args.other:
 		x = args.other
@@ -805,12 +805,12 @@ def calculate_ST(allele_scores, ST_db, gene_names, sample_name, mlst_delimiter, 
 		try:
 			clean_st = ST_db[allele_string]
 		except KeyError:
-			print "This combination of alleles was not found in the sequence type database:",
-			print sample_name,
+			print("This combination of alleles was not found in the sequence type database:", end=' ')
+			print(sample_name, end=' ')
 			for gene in allele_scores:
 				(allele,diffs,depth_problems,divergence) = allele_scores[gene]
-				print allele,
-			print
+				print(allele, end=' ')
+			print()
 			clean_st = "NF"
 	else:
 		clean_st = "ND"
@@ -847,7 +847,7 @@ def parse_ST_database(ST_filename,gene_names_from_fai):
 	ST_db = {} # key = allele string, value = ST
 	gene_names = []
 	num_gene_cols_expected = len(gene_names_from_fai)
-	print "Attempting to read " + str(num_gene_cols_expected) + " loci from ST database " + ST_filename
+	print("Attempting to read " + str(num_gene_cols_expected) + " loci from ST database " + ST_filename)
 	with open(ST_filename) as f:
 		count = 0
 		for line in f:
@@ -857,23 +857,23 @@ def parse_ST_database(ST_filename,gene_names_from_fai):
 				gene_names = line_split[1:min(num_gene_cols_expected+1,len(line_split))]
 				for g in gene_names_from_fai:
 					if g not in gene_names:
-						print "Warning: gene " + g + " in database file isn't among the columns in the ST definitions: " + ",".join(gene_names)
-						print " Any sequences with this gene identifer from the database will not be included in typing."
+						print("Warning: gene " + g + " in database file isn't among the columns in the ST definitions: " + ",".join(gene_names))
+						print(" Any sequences with this gene identifer from the database will not be included in typing.")
 						if len(line_split) == num_gene_cols_expected+1:
 							gene_names.pop() # we read too many columns
 							num_gene_cols_expected -= 1
 				for g in gene_names:
 					if g not in gene_names_from_fai:
-						print "Warning: gene " + g + " in ST definitions file isn't among those in the database " + ",".join(gene_names_from_fai)
-						print " This will result in all STs being called as unknown (but allele calls will be accurate for other loci)."
+						print("Warning: gene " + g + " in ST definitions file isn't among those in the database " + ",".join(gene_names_from_fai))
+						print(" This will result in all STs being called as unknown (but allele calls will be accurate for other loci).")
 			else:
 				ST = line_split[0]
-				if ST not in ST_db.values():
+				if ST not in list(ST_db.values()):
 					ST_string = " ".join(line_split[1:num_gene_cols_expected+1])
 					ST_db[ST_string] = ST
 				else:
-					print "Warning: this ST is not unique in the ST definitions file: " + ST
-		print "Read ST database " + ST_filename + " successfully"
+					print("Warning: this ST is not unique in the ST definitions file: " + ST)
+		print("Read ST database " + ST_filename + " successfully")
 		return (ST_db, gene_names)
 
 def get_allele_name_from_db(allele,run_type,args,unique_allele_symbols=False,unique_cluster_symbols=False):
@@ -935,7 +935,7 @@ def group_allele_dict_by_gene(by_allele,run_type,args,unique_cluster_symbols=Fal
 
 def dict_of_dicts_inverted_ind(dd):
 	res = dict()
-	for (key,val) in dd.items():
+	for (key,val) in list(dd.items()):
 		res.update(dict((key2,key) for key2 in val))
 	return res
 
@@ -945,7 +945,7 @@ def parse_scores(run_type,args,scores, hash_edge_depth,
 					unique_cluster_symbols,unique_allele_symbols, pileup_file):
 
 	# sort into hash for each gene locus
-	scores_by_gene = group_allele_dict_by_gene(dict( (allele,val) for (allele,val) in scores.items() \
+	scores_by_gene = group_allele_dict_by_gene(dict( (allele,val) for (allele,val) in list(scores.items()) \
 			if coverage_allele[allele] > args.min_coverage ),
 			run_type,args,
 			unique_cluster_symbols,unique_allele_symbols)
@@ -956,7 +956,7 @@ def parse_scores(run_type,args,scores, hash_edge_depth,
 	for gene in scores_by_gene:
 
 		gene_hash = scores_by_gene[gene]
-		scores_sorted = sorted(gene_hash.iteritems(),key=operator.itemgetter(1)) # sort by score
+		scores_sorted = sorted(iter(gene_hash.items()),key=operator.itemgetter(1)) # sort by score
 		(top_allele,top_score) = scores_sorted[0]
 
 		# check if depth is adequate for confident call
@@ -1233,7 +1233,7 @@ def read_scores_file(scores_file):
 	mix_rates = {}
 	scores = {}
 
-	f = file(scores_file,"r")
+	f = open(scores_file,"r")
 
 	for line in f:
 		line_split = line.rstrip().split("\t")
@@ -1279,7 +1279,7 @@ def process_fasta_db(args, fileSets, run_type, db_reports, db_results_list, fast
 	db_path, db_name = os.path.split(fasta) # database
 	(db_name,db_ext) = os.path.splitext(db_name)
 	db_results = "__".join([args.output,run_type,db_name,"results.txt"])
-	db_report = file(db_results,"w")
+	db_report = open(db_results,"w")
 	db_reports.append(db_results)
 
 	# Get sequence lengths and gene names
@@ -1459,9 +1459,9 @@ def map_fileSet_to_db(args, sample_name, fastq_inputs, db_name, fasta, size, gen
 		if uncertainty_flags != ["-"] and not args.save_scores and not os.path.exists(scores_output_file):
 			# print full score set
 			logging.info("Printing all MLST scores to " + scores_output_file)
-			scores_output = file(scores_output_file, 'w')
+			scores_output = open(scores_output_file, 'w')
 			scores_output.write("Allele\tScore\tAvg_depth\tEdge1_depth\tEdge2_depth\tPercent_coverage\tSize\tMismatches\tIndels\tTruncated_bases\tDepthNeighbouringTruncation\tMmaxMAF\n")
-			for allele in scores.keys():
+			for allele in list(scores.keys()):
 				score = scores[allele]
 				scores_output.write('\t'.join([allele, str(score), str(avg_depth_allele[allele]), \
 					str(hash_edge_depth[allele][0]), str(hash_edge_depth[allele][1]), \
@@ -1475,9 +1475,9 @@ def map_fileSet_to_db(args, sample_name, fastq_inputs, db_name, fasta, size, gen
 			full_results = "__".join([args.output,"fullgenes",db_name,"results.txt"])
 			logging.info("Printing verbose gene detection results to " + full_results)
 			if os.path.exists(full_results):
-				f = file(full_results,"a")
+				f = open(full_results,"a")
 			else:
-				f = file(full_results,"w") # create and write header
+				f = open(full_results,"w") # create and write header
 				f.write("\t".join(["Sample","DB","gene","allele","coverage","depth","diffs","uncertainty","divergence","length", "maxMAF","clusterid","seqid","annotation"])+"\n")
 		for gene in allele_scores:
 			(allele,diffs,depth_problem,divergence) = allele_scores[gene] # gene = top scoring alleles for each cluster
@@ -1523,7 +1523,7 @@ def map_fileSet_to_db(args, sample_name, fastq_inputs, db_name, fasta, size, gen
 
 def compile_results(args,mlst_results,db_results,compiled_output_file):
 
-	o = file(compiled_output_file,"w")
+	o = open(compiled_output_file,"w")
 
 	# get list of all samples and genes present in these datasets
 	sample_list = [] # each entry is a sample present in at least one db
@@ -1546,7 +1546,7 @@ def compile_results(args,mlst_results,db_results,compiled_output_file):
 				if mlst_cols == 0:
 					mlst_header_string = test_string
 			else:
-				test_string = mlst_result[mlst_result.keys()[0]] # no header line?
+				test_string = mlst_result[list(mlst_result.keys())[0]] # no header line?
 			test_string_split = test_string.split("\t")
 			this_mlst_cols = len(test_string_split)
 			if (mlst_cols == 0) or (mlst_cols == this_mlst_cols):
@@ -1636,8 +1636,8 @@ def compile_results(args,mlst_results,db_results,compiled_output_file):
 
 	# log ST counts
 	if len(mlst_results_master) > 0:
-		logging.info("Detected " + str(len(st_counts.keys())) + " STs: ")
-		sts = st_counts.keys()
+		logging.info("Detected " + str(len(list(st_counts.keys()))) + " STs: ")
+		sts = list(st_counts.keys())
 		sts.sort()
 		for st in sts:
 			logging.info("ST" + st + "\t" + str(st_counts[st]))
@@ -1655,9 +1655,9 @@ def main():
 		if not os.path.exists(output_dir):
 			try:
 				os.makedirs(output_dir)
-				print "Created directory " + output_dir + " for output"
+				print("Created directory " + output_dir + " for output")
 			except:
-				print "Error. Specified output as " + args.output + " however the directory " + output_dir + " does not exist and our attempt to create one failed."
+				print("Error. Specified output as " + args.output + " however the directory " + output_dir + " does not exist and our attempt to create one failed.")
 
 	if args.log is True:
 		logfile = args.output + ".log"
@@ -1702,9 +1702,9 @@ def main():
 		if not args.mlst_definitions:
 
 			# print warning to screen to alert user, may want to stop and restart
-			print "Warning, MLST allele sequences were provided without ST definitions:"
-			print " allele sequences: " + str(args.mlst_db)
-			print " these will be mapped and scored, but STs can not be calculated"
+			print("Warning, MLST allele sequences were provided without ST definitions:")
+			print(" allele sequences: " + str(args.mlst_db))
+			print(" these will be mapped and scored, but STs can not be calculated")
 
 			# log
 			logging.info("Warning, MLST allele sequences were provided without ST definitions:")
