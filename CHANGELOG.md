@@ -39,6 +39,12 @@ for continued use.
 
 ### Fixed
 
+- Tool-version gates now accept the tool versions the production container
+  ships: bowtie2 `2.3`–`2.6` (was capped at `2.2.9`) and samtools `1.0`–`1.29`
+  (was capped at `1.3`). With the old lists, `check_bowtie_version` /
+  `check_samtools_version` rejected bowtie2 2.5.4 and modern samtools and
+  called `exit(-1)`, so SRST2 would not run against its own container's tools.
+  Applied in `srst2.py`, `slurm_srst2.py`, and `qsub_srst2.py`. ([#24])
 - `getmlst.py` now runs under Python 3. It still imported the Python-2-only
   `urllib2` module (`ModuleNotFoundError`, so even `--help` failed) and wrote
   the `bytes` returned by `urlopen().read()` to text-mode files (`TypeError`).
@@ -84,3 +90,4 @@ for continued use.
 [#10]: https://github.com/amd-ph-core/srst2/issues/10
 [#11]: https://github.com/amd-ph-core/srst2/issues/11
 [#20]: https://github.com/amd-ph-core/srst2/issues/20
+[#24]: https://github.com/amd-ph-core/srst2/issues/24
