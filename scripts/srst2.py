@@ -423,7 +423,7 @@ def modify_bowtie_sam(raw_bowtie_sam, max_mismatch, max_unaligned_overlap):
                     continue
                 flag = int(fields[1])
                 flag = (flag - 256) if (flag & 256) else flag
-                m = re.search("NM:i:(\d+)\s", line)
+                m = re.search(r"NM:i:(\d+)\s", line)
                 if m != None:
                     num_mismatch = m.group(1)
                     if int(num_mismatch) <= int(max_mismatch):

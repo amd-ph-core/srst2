@@ -206,7 +206,7 @@ def main():
         "\n  For SRST2, remember to check what separator is being used in this allele database"
     )
     head = os.popen("head -n 1 " + species_all_fasta_filename).read().rstrip()
-    m = re.match(">(.*)([_-])(\d*)", head).groups()
+    m = re.match(r">(.*)([_-])(\d*)", head).groups()
     if len(m) == 3:
         print()
         print("  Looks like --mlst_delimiter '" + m[1] + "'")
