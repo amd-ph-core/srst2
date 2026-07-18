@@ -39,6 +39,12 @@ for continued use.
 
 ### Fixed
 
+- Escaped the backslashes in the bowtie2 `--other` and samtools mpileup
+  argument `help=` strings (`"\\--no-mixed"`, `"\\-A"`). `\-` is an invalid
+  escape sequence in a Python 3 string literal (a `SyntaxWarning`); doubling
+  the backslash both silences the warning and makes the help text render the
+  intended literal backslash. With this, all scripts compile clean under
+  `python3 -W error::SyntaxWarning`. ([#11])
 - Error logging in the per-database handler used `e.message`, which does not
   exist on Python 3 exceptions, so the handler itself raised `AttributeError`
   and masked the real error. It now logs `str(e)`. `CommandError` is also
@@ -71,3 +77,4 @@ for continued use.
 [#8]: https://github.com/amd-ph-core/srst2/issues/8
 [#9]: https://github.com/amd-ph-core/srst2/issues/9
 [#10]: https://github.com/amd-ph-core/srst2/issues/10
+[#11]: https://github.com/amd-ph-core/srst2/issues/11
