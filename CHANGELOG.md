@@ -39,6 +39,11 @@ for continued use.
 
 ### Fixed
 
+- `getmlst.py` now runs under Python 3. It still imported the Python-2-only
+  `urllib2` module (`ModuleNotFoundError`, so even `--help` failed) and wrote
+  the `bytes` returned by `urlopen().read()` to text-mode files (`TypeError`).
+  Import `urllib.request` and decode the downloaded profile/locus content
+  before writing. Completes the Python 3 port for this script. ([#20])
 - Escaped the backslashes in the bowtie2 `--other` and samtools mpileup
   argument `help=` strings (`"\\--no-mixed"`, `"\\-A"`). `\-` is an invalid
   escape sequence in a Python 3 string literal (a `SyntaxWarning`); doubling
@@ -78,3 +83,4 @@ for continued use.
 [#9]: https://github.com/amd-ph-core/srst2/issues/9
 [#10]: https://github.com/amd-ph-core/srst2/issues/10
 [#11]: https://github.com/amd-ph-core/srst2/issues/11
+[#20]: https://github.com/amd-ph-core/srst2/issues/20
