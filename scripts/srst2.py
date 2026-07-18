@@ -910,6 +910,11 @@ def check_command_version(
         # when you ask for the version (sigh). We ignore it here.
         command_stdout = e.output
 
+    # check_output returns bytes in Python 3; decode before the `str in ...`
+    # membership test below.
+    if isinstance(command_stdout, (bytes, bytearray)):
+        command_stdout = command_stdout.decode(errors="replace")
+
     if version_identifier not in command_stdout:
         logging.error("Incorrect version of {} installed.".format(command_name))
         logging.error(
@@ -952,6 +957,11 @@ def check_command_versions(
         # some programs such as samtools return a non-zero exit status
         # when you ask for the version (sigh). We ignore it here.
         command_stdout = e.output
+
+    # check_output returns bytes in Python 3; decode before the `str in ...`
+    # membership tests below.
+    if isinstance(command_stdout, (bytes, bytearray)):
+        command_stdout = command_stdout.decode(errors="replace")
 
     for v in required_versions:
         if version_prefix + v in command_stdout:

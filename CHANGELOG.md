@@ -39,6 +39,12 @@ for continued use.
 
 ### Fixed
 
+- Tool-version checks now decode `subprocess.check_output` bytes to `str`
+  before the `str in ...` membership tests, in `srst2.py`
+  (`check_command_version`, `check_command_versions`) and in the
+  `slurm_srst2.py` / `qsub_srst2.py` wrappers. Under Python 3 the checks
+  compared a `str` against `bytes`, which never matched, so bowtie2/samtools
+  were reported as the wrong version. ([#8])
 - Consensus FASTA output: parse the sample name from the pileup filename by
   splitting on the `__` sample delimiter instead of positionally on `.`, so
   allele names containing a dot (e.g. `NG_047667.1`) no longer raise
@@ -50,3 +56,4 @@ for continued use.
 [#5]: https://github.com/amd-ph-core/srst2/issues/5
 [#6]: https://github.com/amd-ph-core/srst2/issues/6
 [#7]: https://github.com/amd-ph-core/srst2/issues/7
+[#8]: https://github.com/amd-ph-core/srst2/issues/8
