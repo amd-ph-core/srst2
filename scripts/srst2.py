@@ -310,12 +310,12 @@ def run_command(command, **kwargs):
         exit_status = call(command, **kwargs)
     except OSError as e:
         message = "Command '{}' failed due to O/S error: {}".format(command_str, str(e))
-        raise CommandError({"message": message})
+        raise CommandError(message)
     if exit_status != 0:
         message = "Command '{}' failed with non-zero exit status: {}".format(
             command_str, exit_status
         )
-        raise CommandError({"message": message})
+        raise CommandError(message)
 
 
 def bowtie_index(fasta_files):
@@ -1895,7 +1895,7 @@ def process_fasta_db(args, fileSets, run_type, db_reports, db_results_list, fast
         # if we get an error from one of the commands we called
         # log the error message, record as failed, and continue onto the next fasta db
         except CommandError as e:
-            logging.error(e.message)
+            logging.error(str(e))
             # record results as unknown, so we know that we did attempt to analyse this readset
             if run_type == "mlst":
                 st_result_string = "\t".join(

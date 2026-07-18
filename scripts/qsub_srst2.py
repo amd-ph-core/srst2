@@ -191,12 +191,12 @@ def run_command(command, **kwargs):
         exit_status = call(command, **kwargs)
     except OSError as e:
         message = "Command '{}' failed due to O/S error: {}".format(command_str, str(e))
-        raise CommandError({"message": message})
+        raise CommandError(message)
     if exit_status != 0:
         message = "Command '{}' failed with non-zero exit status: {}".format(
             command_str, exit_status
         )
-        raise CommandError({"message": message})
+        raise CommandError(message)
 
 
 def check_bowtie_version():

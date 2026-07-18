@@ -39,6 +39,14 @@ for continued use.
 
 ### Fixed
 
+- Error logging in the per-database handler used `e.message`, which does not
+  exist on Python 3 exceptions, so the handler itself raised `AttributeError`
+  and masked the real error. It now logs `str(e)`. `CommandError` is also
+  raised with a plain message string instead of a `{"message": ...}` dict, so
+  the logged/propagated text is the message itself rather than a dict repr —
+  applied consistently in `srst2.py`, `slurm_srst2.py`, and `qsub_srst2.py`
+  (the wrappers raise `CommandError` uncaught, so this cleans up their
+  tracebacks too). ([#10])
 - Regex literals with backslash escapes are now raw strings: `r"NM:i:(\d+)\s"`
   in `srst2.py` and `r">(.*)([_-])(\d*)"` in `getmlst.py`. `\d`/`\s` are invalid
   escape sequences in ordinary Python 3 string literals (a `SyntaxWarning` that
@@ -62,3 +70,4 @@ for continued use.
 [#7]: https://github.com/amd-ph-core/srst2/issues/7
 [#8]: https://github.com/amd-ph-core/srst2/issues/8
 [#9]: https://github.com/amd-ph-core/srst2/issues/9
+[#10]: https://github.com/amd-ph-core/srst2/issues/10
