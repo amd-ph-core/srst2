@@ -2197,17 +2197,22 @@ def map_fileSet_to_db(
 
             # write details to full genes report
             if args.no_gene_details:
-                # get annotation info
-                header_string = os.popen(" ".join(["grep", allele, fasta]))
+                # get annotation info by scanning the FASTA in-process instead
+                # of shelling out to `grep`. The old `grep <allele> <fasta>`
+                # treated the allele name as a regex, so names with shell/regex
+                # metacharacters (e.g. gene names with parentheses like
+                # aph(3')-Ia) matched wrongly or not at all.
+                annotation = ""
                 try:
-                    header = header_string.read().rstrip().split()
-                    header.pop(0)  # remove allele name
-                    if len(header) > 0:
-                        annotation = " ".join(header)  # put back the spaces
-                    else:
-                        annotation = ""
-
-                except:
+                    with open(fasta) as fasta_fh:
+                        for line in fasta_fh:
+                            if allele in line:
+                                header = line.rstrip().split()
+                                header.pop(0)  # remove allele name
+                                if len(header) > 0:
+                                    annotation = " ".join(header)  # put back the spaces
+                                break
+                except Exception:
                     annotation = ""
 
                 f.write(
