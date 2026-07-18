@@ -20,6 +20,15 @@ for continued use.
 - Normalized the whole tree to 4-space indentation and consistent style with
   `ruff format` (no behavioral change). ([#3])
 
+### Changed
+
+- Annotation lookup for `--no_gene_details` now scans the FASTA in-process
+  instead of shelling out to `grep`. The old unquoted `grep <allele> <fasta>`
+  treated the allele name as a regex, so gene names containing parentheses
+  (e.g. `aph(3')-Ia`) matched wrongly or not at all; the in-process scan
+  matches the literal name and removes the `grep`/subprocess dependency.
+  Reproduces the second inline "jvhagey" production patch. ([#6])
+
 ### Fixed
 
 - Consensus FASTA output: parse the sample name from the pileup filename by
@@ -31,3 +40,4 @@ for continued use.
 [#1]: https://github.com/amd-ph-core/srst2/issues/1
 [#3]: https://github.com/amd-ph-core/srst2/issues/3
 [#5]: https://github.com/amd-ph-core/srst2/issues/5
+[#6]: https://github.com/amd-ph-core/srst2/issues/6
