@@ -21,7 +21,7 @@ try again.
 
 from argparse import ArgumentParser
 import xml.dom.minidom as xml
-import urllib2 as url
+import urllib.request as url
 import re, os, glob
 from urllib.parse import urlparse
 
@@ -182,7 +182,9 @@ def main():
     log_file.write("sourced from: {}\n\n".format(species_info.profiles_url))
     profile_doc = url.urlopen(species_info.profiles_url)
     profile_file = open(profile_filename, "w")
-    profile_file.write(profile_doc.read())
+    # urlopen().read() returns bytes in Python 3; decode before writing to the
+    # text-mode output file.
+    profile_file.write(profile_doc.read().decode("utf-8"))
     profile_file.close()
     profile_doc.close()
     for locus in species_info.loci:
@@ -193,7 +195,9 @@ def main():
         log_file.write("Sourced from {}\n\n".format(locus.url))
         locus_doc = url.urlopen(locus.url)
         locus_file = open(locus_filename, "w")
-        locus_fasta_content = locus_doc.read()
+        # urlopen().read() returns bytes in Python 3; decode before writing to
+        # the text-mode output files.
+        locus_fasta_content = locus_doc.read().decode("utf-8")
         locus_file.write(locus_fasta_content)
         species_all_fasta_file.write(locus_fasta_content)
         locus_file.close()
