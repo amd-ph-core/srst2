@@ -31,8 +31,8 @@ from collections import OrderedDict
 
 try:
     from .version import srst2_version
-except:
-    srst2_version = "version unknown"
+except Exception:
+    srst2_version = "unknown (could not import srst2.version)"
 
 edge_a = edge_z = 2
 

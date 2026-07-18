@@ -22,6 +22,14 @@ for continued use.
 
 ### Changed
 
+- Version is now resolved with `importlib.metadata.version("srst2")` instead of
+  `pkg_resources.require(...)`, removing the runtime dependency on
+  `setuptools`/`pkg_resources`. When the package metadata is unavailable (an
+  uninstalled source checkout), the version reports an explanatory message
+  instead of a hardcoded release number that would go stale. `setup.py` now
+  imports `setuptools` rather than the removed `distutils.core`. Reproduces the
+  third inline "jvhagey" production patch (version hardcode) with a
+  non-stale, self-updating implementation. ([#7])
 - Annotation lookup for `--no_gene_details` now scans the FASTA in-process
   instead of shelling out to `grep`. The old unquoted `grep <allele> <fasta>`
   treated the allele name as a regex, so gene names containing parentheses
@@ -41,3 +49,4 @@ for continued use.
 [#3]: https://github.com/amd-ph-core/srst2/issues/3
 [#5]: https://github.com/amd-ph-core/srst2/issues/5
 [#6]: https://github.com/amd-ph-core/srst2/issues/6
+[#7]: https://github.com/amd-ph-core/srst2/issues/7
