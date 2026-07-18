@@ -246,6 +246,11 @@ def check_command_versions(
         # when you ask for the version (sigh). We ignore it here.
         command_stdout = e.output
 
+    # check_output returns bytes in Python 3; decode before the `str in ...`
+    # membership tests below.
+    if isinstance(command_stdout, (bytes, bytearray)):
+        command_stdout = command_stdout.decode(errors="replace")
+
     version_ok = False
     for v in required_versions:
         if version_prefix + v in command_stdout:
