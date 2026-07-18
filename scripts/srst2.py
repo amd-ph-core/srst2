@@ -661,12 +661,22 @@ def read_pileup_data(pileup_file, size, prob_err, consensus_file=""):
                 elif consensus_file.split(".")[-2] == "all_consensus_alleles":
                     consensus_type = "consensus"
                 with open(consensus_file, "a") as consensus_outfile:
-                    consensus_outfile.write(
-                        ">{0}.{1} {2}\n".format(
-                            allele,
-                            consensus_type,
-                            pileup_file.split(".")[1].split("__")[1],
+                    # Extract the sample name from the pileup filename. Splitting
+                    # positionally on "." breaks for allele names that contain a
+                    # dot (e.g. NG_047667.1), so split on the "__" sample
+                    # delimiter and strip the trailing ".<db>.pileup" suffix,
+                    # falling back to the basename if that structure is absent.
+                    try:
+                        pileup_parts = os.path.basename(pileup_file).split("__")
+                        sample_id = (
+                            pileup_parts[1].split(".")[0]
+                            if len(pileup_parts) >= 2
+                            else os.path.basename(pileup_file)
                         )
+                    except (IndexError, AttributeError):
+                        sample_id = os.path.basename(pileup_file)
+                    consensus_outfile.write(
+                        ">{0}.{1} {2}\n".format(allele, consensus_type, sample_id)
                     )
                     outstring = consensus_seq + "\n"
                     consensus_outfile.write(outstring)

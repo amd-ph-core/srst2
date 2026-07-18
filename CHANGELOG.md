@@ -20,6 +20,14 @@ for continued use.
 - Normalized the whole tree to 4-space indentation and consistent style with
   `ruff format` (no behavioral change). ([#3])
 
+### Fixed
+
+- Consensus FASTA output: parse the sample name from the pileup filename by
+  splitting on the `__` sample delimiter instead of positionally on `.`, so
+  allele names containing a dot (e.g. `NG_047667.1`) no longer raise
+  `IndexError`. Reproduces the first inline "jvhagey" production patch. ([#5])
+
 [Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...dev
 [#1]: https://github.com/amd-ph-core/srst2/issues/1
 [#3]: https://github.com/amd-ph-core/srst2/issues/3
+[#5]: https://github.com/amd-ph-core/srst2/issues/5
