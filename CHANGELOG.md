@@ -39,6 +39,10 @@ for continued use.
 
 ### Fixed
 
+- Regex literals with backslash escapes are now raw strings: `r"NM:i:(\d+)\s"`
+  in `srst2.py` and `r">(.*)([_-])(\d*)"` in `getmlst.py`. `\d`/`\s` are invalid
+  escape sequences in ordinary Python 3 string literals (a `SyntaxWarning` that
+  is slated to become a `SyntaxError`). ([#9])
 - Tool-version checks now decode `subprocess.check_output` bytes to `str`
   before the `str in ...` membership tests, in `srst2.py`
   (`check_command_version`, `check_command_versions`) and in the
@@ -57,3 +61,4 @@ for continued use.
 [#6]: https://github.com/amd-ph-core/srst2/issues/6
 [#7]: https://github.com/amd-ph-core/srst2/issues/7
 [#8]: https://github.com/amd-ph-core/srst2/issues/8
+[#9]: https://github.com/amd-ph-core/srst2/issues/9
