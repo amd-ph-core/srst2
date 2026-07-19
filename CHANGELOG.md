@@ -40,6 +40,15 @@ for continued use.
 
 ### Fixed
 
+- Consensus headers now use the actual `sample_name` (threaded through
+  `read_pileup_data`/`parse_scores`) instead of parsing it out of the pileup
+  filename. The old positional parse (`pileup_file.split(".")[1].split("__")[1]`)
+  crashed on paths/prefixes containing extra `.`s, reported by CDC and PHAC
+  upstream ([katholt#143], [katholt#99]); the fix that shipped in the bioconda
+  recipe (thread `sample_name`) never reached upstream GitHub. This adopts that
+  root-cause fix, superseding the filename-parse-with-fallback introduced in
+  #5. Behavioral (the consensus header's sample-name field is now the true
+  sample name). ([#55])
 - Adopted upstream fix #69 ("round penalty to integer", commit `9eaedff`) that
   our `v0.2.0`-based port was missing: the deletion/edge penalties in
   `read_pileup_data` are now `round(penalty)` rather than the raw float. This
@@ -224,3 +233,6 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#48]: https://github.com/amd-ph-core/srst2/issues/48
 [#50]: https://github.com/amd-ph-core/srst2/issues/50
 [#52]: https://github.com/amd-ph-core/srst2/issues/52
+[#55]: https://github.com/amd-ph-core/srst2/issues/55
+[katholt#99]: https://github.com/katholt/srst2/issues/99
+[katholt#143]: https://github.com/katholt/srst2/issues/143
