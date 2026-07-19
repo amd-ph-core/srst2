@@ -22,6 +22,11 @@ for continued use.
 
 ### Changed
 
+- `setup.py` now declares `python_requires = ">=3.12"` and lists `numpy`,
+  `scipy`, and `biopython` as runtime dependencies (previously left for the
+  user to install). The Python deps are intentionally not lower-pinned — the
+  code uses only long-stable APIs — so pip provisions a working environment
+  without over-constraining versions. ([#34])
 - Tool-version gates are now **minimum-version checks** rather than hardcoded
   exact-match lists. `check_bowtie_version`/`check_samtools_version` parse the
   reported version and require it to be at or above a floor
@@ -118,3 +123,4 @@ for continued use.
 [#28]: https://github.com/amd-ph-core/srst2/issues/28
 [#30]: https://github.com/amd-ph-core/srst2/issues/30
 [#32]: https://github.com/amd-ph-core/srst2/issues/32
+[#34]: https://github.com/amd-ph-core/srst2/issues/34
