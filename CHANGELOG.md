@@ -11,6 +11,17 @@ for continued use.
 
 ## [Unreleased]
 
+### Changed
+
+- Rewrote `database_clustering/align_plot_tree_min3.py` as pure Python, dropping
+  the `rpy2` + R (`ape`) dependency. It now builds neighbour-joining trees with
+  Biopython (`AlignIO` + `Bio.Phylo.TreeConstruction`) and renders them to a
+  multi-page PDF with matplotlib, and takes an argparse CLI (`--input_dir`,
+  `--pattern`, `--output`, `--min_seqs`) in place of the previous hardcoded
+  path. `matplotlib` is now declared in `setup.py`. (Generating the input
+  alignments with an external aligner such as muscle/mafft remains a
+  prerequisite.) ([#41])
+
 ### Fixed
 
 - Modernized the `database_clustering/` helper scripts for Python 3 and current
@@ -137,3 +148,4 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#32]: https://github.com/amd-ph-core/srst2/issues/32
 [#34]: https://github.com/amd-ph-core/srst2/issues/34
 [#39]: https://github.com/amd-ph-core/srst2/issues/39
+[#41]: https://github.com/amd-ph-core/srst2/issues/41
