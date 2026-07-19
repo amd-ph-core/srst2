@@ -2475,11 +2475,18 @@ def main():
     logging.info("program started")
     logging.info("command line: {0}".format(" ".join(sys.argv)))
 
-    # Delete consensus file if it already exists (so can use append file in functions)
+    # Delete any pre-existing consensus files up front, so the append-mode writes
+    # in read_pileup_data start clean rather than appending to a previous run's
+    # output. These are the filenames actually written (see parse_scores); the
+    # old code removed a ".consensus_alleles.fasta" that is never written, so
+    # re-running into the same --output prefix duplicated consensus records.
     if args.report_new_consensus or args.report_all_consensus:
-        new_alleles_filename = args.output + ".consensus_alleles.fasta"
-        if os.path.exists(new_alleles_filename):
-            os.remove(new_alleles_filename)
+        stale_consensus_files = [args.output + ".new_consensus_alleles.fasta"]
+        if args.report_all_consensus:
+            stale_consensus_files.append(args.output + ".all_consensus_alleles.fasta")
+        for stale_consensus_file in stale_consensus_files:
+            if os.path.exists(stale_consensus_file):
+                os.remove(stale_consensus_file)
 
     # vars to store results
     mlst_results_hashes = []  # dict (sample->MLST result string) for each MLST output files created/read
