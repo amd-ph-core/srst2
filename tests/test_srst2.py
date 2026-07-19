@@ -530,5 +530,26 @@ class TestParseScoresTies(unittest.TestCase):
         self.assertEqual(reported, [a1])
 
 
+class TestGetAlleleNameMlstDelimiter(unittest.TestCase):
+    # Regression test for issue #60 (upstream katholt/srst2#113): an MLST allele
+    # without the --mlst_delimiter must raise a clear CommandError, not a cryptic
+    # IndexError that crashes the whole run.
+    def test_missing_delimiter_raises_commanderror(self):
+        import types
+
+        args = types.SimpleNamespace(mlst_delimiter="_")
+        with self.assertRaises(srst2.CommandError):
+            srst2.get_allele_name_from_db("arcC", "mlst", args)
+
+    def test_delimited_allele_still_parses(self):
+        import types
+
+        args = types.SimpleNamespace(mlst_delimiter="_")
+        gene_name, allele_name, cluster_id, seqid = srst2.get_allele_name_from_db(
+            "arcC_5", "mlst", args
+        )
+        self.assertEqual((gene_name, allele_name), ("arcC", "5"))
+
+
 if __name__ == "__main__":
     unittest.main()
