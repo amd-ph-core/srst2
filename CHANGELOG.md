@@ -11,6 +11,11 @@ for continued use.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-18
+
+Maintenance release: brings the `database_clustering/` helper scripts up to a
+modern Python 3 / Biopython stack and removes the `rpy2` + R dependency.
+
 ### Changed
 
 - Rewrote `database_clustering/align_plot_tree_min3.py` as pure Python, dropping
@@ -129,7 +134,8 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
   allele names containing a dot (e.g. `NG_047667.1`) no longer raise
   `IndexError`. Reproduces the first inline "jvhagey" production patch. ([#5])
 
-[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...dev
+[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...dev
+[0.3.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...v0.3.0
 [#1]: https://github.com/amd-ph-core/srst2/issues/1
 [#3]: https://github.com/amd-ph-core/srst2/issues/3
