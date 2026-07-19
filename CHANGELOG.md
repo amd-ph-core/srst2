@@ -11,6 +11,14 @@ for continued use.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-18
+
+The first working, modernized Python 3 release. SRST2 v0.2.0 (the last upstream
+release, 2016) ported to Python 3.12 and coded against a current toolchain
+(bowtie2 2.5.x, samtools 1.x), validated end-to-end. Backward compatibility with
+the pre-1.9 samtools interface is intentionally dropped in favor of forward
+compatibility. All bundled scripts are maintained, not just `srst2.py`.
+
 ### Changed
 
 - Ported the SRST2 v0.2.0 source tree from Python 2.7 to Python 3.12: `2to3`
@@ -19,9 +27,6 @@ for continued use.
   fixes are tracked separately. ([#1])
 - Normalized the whole tree to 4-space indentation and consistent style with
   `ruff format` (no behavioral change). ([#3])
-
-### Changed
-
 - `setup.py` now declares `python_requires = ">=3.12"` and lists `numpy`,
   `scipy`, and `biopython` as runtime dependencies (previously left for the
   user to install). The Python deps are intentionally not lower-pinned — the
@@ -67,12 +72,6 @@ for continued use.
   errored with `invalid option -- 'L'` and produced no output. srst2 consumes
   only the text pileup, so the flag was never needed. Verified end-to-end
   against samtools 1.22.1 (the container's version) and 1.24. ([#26])
-- Tool-version gates now accept the tool versions the production container
-  ships: bowtie2 `2.3`–`2.6` (was capped at `2.2.9`) and samtools `1.0`–`1.29`
-  (was capped at `1.3`). With the old lists, `check_bowtie_version` /
-  `check_samtools_version` rejected bowtie2 2.5.4 and modern samtools and
-  called `exit(-1)`, so SRST2 would not run against its own container's tools.
-  Applied in `srst2.py`, `slurm_srst2.py`, and `qsub_srst2.py`. ([#24])
 - `getmlst.py` now runs under Python 3. It still imported the Python-2-only
   `urllib2` module (`ModuleNotFoundError`, so even `--help` failed) and wrote
   the `bytes` returned by `urlopen().read()` to text-mode files (`TypeError`).
@@ -107,7 +106,8 @@ for continued use.
   allele names containing a dot (e.g. `NG_047667.1`) no longer raise
   `IndexError`. Reproduces the first inline "jvhagey" production patch. ([#5])
 
-[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...dev
+[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...dev
+[0.3.0]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...v0.3.0
 [#1]: https://github.com/amd-ph-core/srst2/issues/1
 [#3]: https://github.com/amd-ph-core/srst2/issues/3
 [#5]: https://github.com/amd-ph-core/srst2/issues/5
