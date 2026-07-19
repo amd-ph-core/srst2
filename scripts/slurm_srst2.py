@@ -9,7 +9,7 @@ necessary to make it run properly on a different cluster using SLURM.
 """
 
 import string, re, collections
-import os, sys, subprocess
+import os, sys, subprocess, shlex
 from subprocess import call, check_output, CalledProcessError, STDOUT
 from argparse import ArgumentParser, FileType
 import logging
@@ -380,25 +380,29 @@ def main():
         cmd += "\n#SBATCH --cpus-per-task=" + str(args.threads)
         cmd += "\n#SBATCH --mem-per-cpu=" + args.memory
         cmd += "\n#SBATCH --time=" + args.walltime
-        cmd += "\ncd " + args.rundir
+        cmd += "\ncd " + shlex.quote(args.rundir)
         cmd += "\nmodule load srst2/0.1.8-Python-2.7.10"
         cmd += "\n" + args.script
         fastq = fileSets[sample]
         if len(fastq) > 1:
-            cmd += " --input_pe " + fastq[0] + " " + fastq[1]
+            cmd += " --input_pe " + shlex.quote(fastq[0]) + " " + shlex.quote(fastq[1])
             cmd += " --forward " + args.forward
             cmd += " --reverse " + args.reverse
         else:
-            cmd += " --input_se " + fastq[0]
-        cmd += " --output " + sample + "_" + args.output
+            cmd += " --input_se " + shlex.quote(fastq[0])
+        cmd += " --output " + shlex.quote(sample + "_" + args.output)
         cmd += " --log"
         cmd += " --threads " + str(args.threads)
         cmd += " " + args.other_args
 
-        # print and run command
+        # print and submit the job. Feed the script to sbatch's stdin via
+        # subprocess (no shell) instead of os.system('echo "..." | sbatch'),
+        # which broke or allowed injection when cmd contained shell
+        # metacharacters.
         print(cmd)
         print("")
-        os.system('echo "' + cmd + '" | sbatch')
+        sbatch_proc = subprocess.Popen(["sbatch"], stdin=subprocess.PIPE)
+        sbatch_proc.communicate(cmd.encode())
         print("")
 
 
