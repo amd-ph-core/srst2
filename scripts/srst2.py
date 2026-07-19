@@ -69,6 +69,13 @@ def parse_args():
         help="Switch on if all the input read sets belong to a single sample, and you want to merge their data to get a single result",
     )
     parser.add_argument(
+        "--label",
+        type=str,
+        required=False,
+        default="",
+        help="Sample name to use in the output, instead of inferring it from the read file name(s). Only valid for a single read set.",
+    )
+    parser.add_argument(
         "--forward",
         type=str,
         required=False,
@@ -1640,6 +1647,20 @@ def read_file_sets(args):
         logging.info("Total paired readsets found:" + str(num_paired_readsets))
     if num_single_readsets > 0:
         logging.info("Total single reads found:" + str(num_single_readsets))
+
+    # If the user gave an explicit --label, use it as the sample name instead of
+    # the one inferred from the read file name. Only meaningful for a single read
+    # set, since one label cannot name multiple samples.
+    if getattr(args, "label", ""):
+        if len(fileSets) == 1:
+            fileSets = {args.label: list(fileSets.values())[0]}
+        elif len(fileSets) > 1:
+            logging.error(
+                "--label was given but {} read sets were found; --label can only "
+                "be used with a single read set (or combine reads with "
+                "--merge_paired).".format(len(fileSets))
+            )
+            sys.exit(1)
 
     return fileSets
 
