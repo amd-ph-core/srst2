@@ -47,6 +47,10 @@ for continued use.
 
 ### Fixed
 
+- `analyseSRST2.py` now imports under a modern SciPy. It carried a dead
+  `from scipy.stats import binom_test, linregress` import (neither name is used
+  in the file); `binom_test` was removed in SciPy 1.12, so the stale import
+  broke the whole module. Removed the unused import. ([#30])
 - Removed the `-L 1000` flag from the `samtools mpileup` call. `-L` was removed
   from `samtools mpileup` in samtools 1.9 (it belonged to the BCF/VCF calling
   path that moved to `bcftools`), so on any modern samtools the pileup step
@@ -107,3 +111,4 @@ for continued use.
 [#24]: https://github.com/amd-ph-core/srst2/issues/24
 [#26]: https://github.com/amd-ph-core/srst2/issues/26
 [#28]: https://github.com/amd-ph-core/srst2/issues/28
+[#30]: https://github.com/amd-ph-core/srst2/issues/30
