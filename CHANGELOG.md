@@ -29,6 +29,12 @@ for continued use.
 
 ### Fixed
 
+- The pre-run consensus cleanup now removes the files that are actually written
+  (`${output}.new_consensus_alleles.fasta` and, when `--report_all_consensus`
+  is set, `${output}.all_consensus_alleles.fasta`) instead of a never-written
+  `${output}.consensus_alleles.fasta`. Those files are opened in append mode, so
+  re-running into the same `--output` prefix previously appended duplicate
+  consensus records; re-runs now start clean. ([#48])
 - Multi-digit indel lengths in the pileup are no longer mis-parsed. In
   `read_pileup_data`, `+`/`-` indels were skipped by reading only the first
   digit of the length (`int(aligned_bases[i + 1])`), so any indel of 10 bp or
@@ -184,3 +190,4 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#41]: https://github.com/amd-ph-core/srst2/issues/41
 [#44]: https://github.com/amd-ph-core/srst2/issues/44
 [#46]: https://github.com/amd-ph-core/srst2/issues/46
+[#48]: https://github.com/amd-ph-core/srst2/issues/48
