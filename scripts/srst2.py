@@ -812,9 +812,20 @@ def score_alleles(
                     if match > 0 or mismatch > 0:
                         # One-tailed test - prob to get that many or fewer matches
                         p_value = binom.cdf(match, match + mismatch, prob_success)
-                        # Weight pvalue by (depth/max_depth)
-                        weight = (match + mismatch) / float(max_depth)
-                        p_value *= weight
+                        # PROTOTYPE (#56 / upstream #141): only down-weight
+                        # positions that actually carry a mismatch. Applying the
+                        # depth weight (depth/max_depth) to perfect-match positions
+                        # penalised alleles whose depth merely *varies* across
+                        # positions, so a high-but-variable-depth perfect allele
+                        # could score worse than a uniform-low-depth allele with
+                        # real SNPs -- inverting the call. Leaving clean positions
+                        # at p_value = 1.0 (-> -log10 = 0) removes that artefact.
+                        # NOT MERGED: changes scores for every allele; needs
+                        # PHoeNIx re-validation and a real test case.
+                        if mismatch > 0:
+                            # Weight pvalue by (depth/max_depth)
+                            weight = (match + mismatch) / float(max_depth)
+                            p_value *= weight
                         if p_value < min_pval:
                             min_pval = p_value
                             min_pval_data = (mismatch, match + mismatch)
