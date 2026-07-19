@@ -26,11 +26,13 @@ setup(
     install_requires=[
         # Declare the runtime dependencies so pip provisions them, but do not
         # pin lower bounds: srst2.py uses only long-stable scipy.stats APIs
-        # (binom, linregress) and consensus_alignment.py uses Biopython's SeqIO,
-        # none of which need a specific version. Add a lower bound only if a
-        # concrete incompatibility ever forces one.
+        # (binom, linregress), consensus_alignment.py / database_clustering use
+        # Biopython, and database_clustering/align_plot_tree_min3.py plots trees
+        # with matplotlib -- none of which need a specific version. Add a lower
+        # bound only if a concrete incompatibility ever forces one.
         "numpy",
         "scipy",
         "biopython",
+        "matplotlib",
     ],
 )
