@@ -1,3 +1,7 @@
+NOTE: This is the original upstream (katholt/srst2) change log, kept for
+historical reference. Changes made in the amd-ph-core maintenance fork
+(Python 3 port and modernization, v0.3.0 onward) are documented in CHANGELOG.md.
+
 v0.1.7-beta, Tues 22 Dec 2015, -- Pick a prefered samtools or bowtie executable
 
 v0.1.1-beta, Wed 26 Sep 2013, -- Fixed problem with forward/reverse pattern matching. 

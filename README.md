@@ -6,175 +6,116 @@ This program is designed to take Illumina sequence data, a MLST database and/or 
 of gene sequences (e.g. resistance genes, virulence genes, etc) and report the presence of
 STs and/or reference genes.
 
+> **This repository is a maintenance fork.** It is `amd-ph-core/srst2`, a
+> **Python 3** port and modernization of the original
+> [`katholt/srst2`](https://github.com/katholt/srst2) at its last upstream
+> release (**v0.2.0**, 2016). Upstream has been unmaintained since then. This
+> fork runs on **Python 3.12** against a **current bowtie2 / samtools**
+> toolchain and is validated end-to-end. See **[CHANGELOG.md](CHANGELOG.md)**
+> for everything that changed. The original authorship and citation below are
+> retained unchanged.
+
 Authors - Michael Inouye, Harriet Dashnow, Bernie Pope, Ryan Wick, Kathryn Holt (University of Melbourne)
 		
 How to cite - The peer-reviewed open-access paper is available in Genome Medicine: http://genomemedicine.com/content/6/11/90
 
 Story-behind-the-paper is [here](http://holtlab.net/2014/12/27/behind-the-paper-srst2-for-short-read-sequence-typing-of-bacterial-pathogens/)
 		
-Problems? Please post an issue here in github: https://github.com/katholt/srst2/issues.
-
-To be notifed of updates, join the SRST2 google group at https://groups.google.com/forum/#!forum/srst2.
+Problems with this fork? Please post an issue at https://github.com/amd-ph-core/srst2/issues.
+(For the original upstream tool, see https://github.com/katholt/srst2/issues.)
 
 Contents
 ----
-[Current release](https://github.com/katholt/srst2#current-release)
+[Current release](#current-release)
 
-[Installation](https://github.com/katholt/srst2#installation)
+[Installation](#installation)
 
-[Basic usage - MLST](https://github.com/katholt/srst2#basic-usage---mlst)
+[Basic usage - MLST](#basic-usage---mlst)
 
-[Basic usage - Resistance genes](https://github.com/katholt/srst2#basic-usage---resistance-genes)
+[Basic usage - Resistance genes](#basic-usage---resistance-genes)
 
-[All usage options](https://github.com/katholt/srst2#all-usage-options)
+[All usage options](#all-usage-options)
 
-[Input read formats and options](https://github.com/katholt/srst2#input-read-formats-and-options)
+[Input read formats and options](#input-read-formats-and-options)
 
-[MLST Database format](https://github.com/katholt/srst2#mlst-database-format)
+[MLST Database format](#mlst-database-format)
 
-[Gene databases](https://github.com/katholt/srst2#gene-databases)
+[Gene databases](#gene-databases)
 
-[Output files](https://github.com/katholt/srst2#output-files)
+[Output files](#output-files)
 
-* [MLST results](https://github.com/katholt/srst2#mlst-results)
+* [MLST results](#mlst-results)
 
-* [Gene typing](https://github.com/katholt/srst2#gene-typing)
+* [Gene typing](#gene-typing)
 
-* [Combined results](https://github.com/katholt/srst2#combined-results)
+* [Combined results](#combined-results)
 
-* [Mapping results](https://github.com/katholt/srst2#mapping-results)
+* [Mapping results](#mapping-results)
 
-[Printing consensus sequences](https://github.com/katholt/srst2#printing-consensus-sequences)
+[Printing consensus sequences](#printing-consensus-sequences)
 
-[More basic usage examples](https://github.com/katholt/srst2#more-basic-usage-examples)
+[More basic usage examples](#more-basic-usage-examples)
 
-[Compile results from completed runs](https://github.com/katholt/srst2#compile-results-from-completed-runs)
+[Compile results from completed runs](#compile-results-from-completed-runs)
 
-[Running lots of jobs and compiling results](https://github.com/katholt/srst2#running-lots-of-jobs-and-compiling-results)
+[Running lots of jobs and compiling results](#running-lots-of-jobs-and-compiling-results)
 
-[Known issues](https://github.com/katholt/srst2#known-issues)
+[Known issues](#known-issues)
 
-[Generating SRST2-compatible clustered database from raw sequences](https://github.com/katholt/srst2#generating-srst2-compatible-clustered-database-from-raw-sequences)
+[Generating SRST2-compatible clustered database from raw sequences](#generating-srst2-compatible-clustered-database-from-raw-sequences)
 
-* [Using the VFBD Virulence Factor Database with SRST2](https://github.com/katholt/srst2#using-the-vfbd-virulence-factor-database-with-srst2)
+* [Using the VFBD Virulence Factor Database with SRST2](#using-the-vfbd-virulence-factor-database-with-srst2)
 
-* [Using the EcOH database for serotyping E. coli with SRST2](https://github.com/katholt/srst2#using-the-ecoh-database-for-serotyping-e-coli-with-srst2)
+* [Using the EcOH database for serotyping E. coli with SRST2](#using-the-ecoh-database-for-serotyping-e-coli-with-srst2)
 
-[Typing the LEE pathogenicity island of E. coli](https://github.com/katholt/srst2#typing-the-lee-pathogenicity-island-of-e-coli)
+[Typing the LEE pathogenicity island of E. coli](#typing-the-lee-pathogenicity-island-of-e-coli)
 
-[Plotting output in R](https://github.com/katholt/srst2#plotting-output-in-r)
+[Plotting output in R](#plotting-output-in-r)
 
 [Example - Shigella sonnei public data](example.txt)
 
-Current release - v0.2.0 - July 28, 2016
+Current release
 -----
 
-Dependencies:
-* python (v2.7.5 or later)
-* scipy, numpy   http://www.scipy.org/install.html
-* bowtie2 (v2.1.0 or later)   http://bowtie-bio.sourceforge.net/bowtie2/index.shtml
-* SAMtools v0.1.18   https://sourceforge.net/projects/samtools/files/samtools/0.1.18/ (NOTE: later versions can be used, but better results are obtained with v0.1.18, especially at low read depths (<20x))
+**v0.3.0**
 
------------
+This is the first release of the `amd-ph-core` maintenance fork: SRST2 v0.2.0
+(the last upstream release) ported to **Python 3.12** and modernized to run
+against a **current bowtie2 / samtools** toolchain, validated end-to-end.
 
-Updates in v0.2.0
+For the full list of changes in this fork, see **[CHANGELOG.md](CHANGELOG.md)**.
+Upstream release history through v0.2.0 is preserved in the original
+[katholt/srst2](https://github.com/katholt/srst2) repository (and, in brief, in
+`CHANGES.txt`).
 
-1. Some improvements to allele calling, particularly for Klebsiella MLST locus mdh, kindly contributed by [andreyto](https://github.com/andreyto). Includes rejection of read alignments that are clipped on both ends (likely to be spurious) and minor bug fixes associated with depth calculations.
-2. Updated E. coli serotype database to remove duplicate sequences.
-3. Added mcr-2 colistin resistance gene to `ARGannot.r1.fasta` resistance gene database.
-4. A `--threads` option was added, which makes SRST2 call Bowtie and Samtools with their threading options. The resulting speed up is mostly due to the Bowtie mapping step which parallelises very well.
-5. The `VFDB_cdhit_to_csv.py` script was updated to work with the new VFDB FASTA format.
-6. Versions of Bowtie2 up to 2.2.9 are now supported. Samtools v1.3 can now be used as well, however v0.1.18 is still the recommended version (for reasons discussed below).
-7. Added `scripts/qsub_srst2.py` to generate SRST2 jobs for the Grid Engine (qsub) scheduling system (http://gridscheduler.sourceforge.net/). Thanks to Ramon Fallon from the University of St Andrews for putting this together. Some of the specifics are set up for his cluster, so modifications may be necessary to make it run properly on a different cluster using Grid Engine.
-8. Various other small bug fixes!
+Requirements:
 
------------
+* **Python ≥ 3.12**
+* **scipy**, **numpy**, **biopython** — installed automatically by `pip`
+* **bowtie2 ≥ 2.4** (tested with 2.5.4). The `bowtie2` launcher is a Perl
+  script, so `perl` must also be on your `PATH`.
+* **samtools ≥ 1.9** (tested with 1.22)
 
-Updates in v0.1.8
-
-1. /data directory includes files for subtyping of the LEE pathogenicity island of E. coli, as per [Ingle et al, 2016, Nature Microbiology](http://www.nature.com/articles/nmicrobiol201510). [Instructions below](https://github.com/katholt/srst2#typing-the-lee-pathogenicity-island-of-e-coli)
-2. Resistance gene database updates:
-  * Fixed `ARGannot.r1.fasta` to include proper mcr1 DNA sequence.
-  * Added columns to the `ARGannot_clustered80.csv` table, to indicate classes of beta-lactamases included in the `ARGannot.r1.fasta` database according to the [NCBI beta-lactamase resource](http://www.ncbi.nlm.nih.gov/pathogens/beta-lactamase-data-resources/) (new location for the Lahey list).
-3. Fixed some issues with handling of missing data (i.e. where there were no hits to MLST and/or no hits to genes) when compiling results into a table via `--prev_output`. This could result in misalignment of gene columns in previous versions.
-
------------
-
-Updates in v0.1.7
-
-1. Use the following environment variables to specify your prefered samtools and bowtie2 executables (thanks to Ben Taylor for this):
-  * SRST2_SAMTOOLS
-  * SRST2_BOWTIE2
-  * SRST2_BOWTIE2_BUILD
-2. Added mcr1, the plasmid-borne colisting resistance gene to the included ARG-Annot-based resistance gene DB (`ARGannot.r1.fasta`)
-3. Fixed a problem with writing consensus files that occurred when a directory structure was specified using `--output` (bug introduced in v0.1.6)
-
------------
-
-Updates in v0.1.6
-
-1. The original validation of SRST2 (see [paper](http://genomemedicine.com/content/6/11/90)) was performed with bowtie2 version 2.1.0 and samtools v0.1.18.
-  * bowtie2: SRST2 has now been tested on the tutorial example and other test data sets using the latest versions of bowtie2, 2.2.3 and 2.2.4, which gave identical results to those obtained with bowtie2 v2.1.0. Therefore, the SRST2 code will now run if any of these versions of bowtie2 are available: 2.1.0, 2.2.3 or 2.2.4. 
-  * samtools: SRST2 has now been tested on the Staph & Salmonella test data sets used in the paper, and will work with newer samtools versions (tested up to v1.1). Note however that SRST2 still works best with [samtools v0.1.18](https://sourceforge.net/projects/samtools/files/samtools/0.1.18/), due to small changes in the mapping algorithms in later versions that result in some loss of reads at the ends of alleles. This has most impact at low read depths, however we do recommend using v0.1.18 for optimum results.
-2. Minor fixes to the ARG-Annot database of resistance genes, including removal of duplicate sequences and fixes to gene names (thanks to Wan Yu for this). Old version remains unchanged for backwards compatibility, but we recommend using the revised version (located in `data/ARGannot.r1.fasta`).
-3. Added EcOH database for serotyping E. coli (thanks to Danielle Ingle for this). See [Using the EcOH database for serotyping E. coli with SRST2](https://github.com/katholt/srst2#using-the-ecoh-database-for-serotyping-e-coli-with-srst2) and [this BioRxiv paper](http://biorxiv.org/content/early/2015/11/18/032151).
-4. Fixed a problem where, when analysing multiple read sets in one SRST2 call against a gene database in which cluster ids don't match gene symbols, individual gene clusters appear multiple times in the output. The compile function was unaffected and remains unchanged.
-5. Fixed behaviour so that including directory paths in `--output` parameter works (thanks to nyunyun for contributing most of this fix). E.g. `--output test_dir/test` will create output files prefixed with `test`, located in `test_dir/`, and all SRST2 functions should work correctly including consensus allele calling. If `test_dir/` doesn't exist, we attempt to create it; if this is not possible the user is alerted and SRST2 stops.
-6. Fixed problem when using a gene database with a simple fasta header (ie not clustered for SRST2; note best results are achieved by pre-clusering your sequence database beforehand) (thanks to cglambert for this one).
-7. Fixes contributed by ppcherng (thanks!): 
-  * Fixed KeyErrors that occured when a given seqID was not found in the seq2cluster dictionary, which tended to happen if the FASTA file (gene database) contained empty entries that only have a header and no sequence.
-  * Note v0.1.5 included addition of ppcherng's utility scripts to help automate creation of SRST2-compatible gene databases from VFDB.
-8. Added new parameter `--samtools_args` to pass additional options to samtools mpileup (e.g. SionBayliss requested this in order to use `-A` option in samtools mpileup to include anomalous reads).
-9. Fixed problem with consensus sequence reporting of truncated alleles (issue #39).
-10. Added basic instructions for the R scripts provided for plotting output. See [Plotting output in R](https://github.com/katholt/srst2#plotting-output-in-r)
-
------------
-
-Updates in v0.1.5
-
-1. Optionally switch on reporting of pileups and consensus sequences (fasta) for novel alleles (`--report_new_consensus`) or for all alleles (`--report_all_consensus`). See [Printing consensus sequences](https://github.com/katholt/srst2#printing-consensus-sequences)
-2. Post-process consensus sequences from a set of strains, to generate one file per locus containing all/new consensus sequences. See [Collate consensus sequences](https://github.com/katholt/srst2/blob/master/README.md#collate-consensus-sequences-output-by-srst2-run-on-multiple-strains--loci-into-one-file-per-locus)
-3. Some enhancements to getmlst.py script to handle some more unusual scheme names (force download of specific schemes that have non-unique  names, handle forward slashes in names).
-4. Fixed an issue where, if multiple readsets analysed in serial in a SRST2 run, the fullgenes report would only contain the results for the last readset. Fullgenes report now contains gene output for all readsets.
-5. Added option (`--merge_paired`) to accommodate cases where users have multiple read sets for the same sample. If this flag is used, SRST2 will assume that all the input reads belong to the same sample, and outputs will be named as `[prefix]__combined.xxx`, where SRST2 was run using `--output [prefix]`. If the flag is not used, SRST2 will operate as usual and assume that each read pair is a new sample, with output files named as `[prefix]__[sample].xxx`, where [sample] is taken from the base name of the reads fastq files. Note that if you have lots of multi-run read sets to analyse, the ease of job submission will depend heavily on how your files are named and you will need to figure out your own approach to manage this (ie there is no way to submit multiple sets of multiple reads).
-6. The original validation of SRST2 (see [paper](http://genomemedicine.com/content/6/11/90)) was performed with bowtie2 version 2.1.0. SRST2 has now been tested on the tutorial example using the latest versions of bowtie2, 2.2.3 and 2.2.4, which gave identical results to those obtained with bowtie2 v2.1.0. Therefore, the SRST2 code will now run if any of these versions of bowtie2 are available: 2.1.0, 2.2.3 or 2.2.4. (Note however that there are still incompatibilities with the recent release of samtools, so you will need to stick to [samtools v0.1.18](https://sourceforge.net/projects/samtools/files/samtools/0.1.18/) unless you want to modify the SRST2 code to allow later versions, and are happy with a dramatic loss in accuracy!)
-7. Thanks to ppcherng for adding utility scripts to help automate creation of SRST2-compatible gene databases from VFDB.
-
------------
-
-Updates in v0.1.4
-
-1. No longer store sam and unsorted bam (can be retained via the `--keep_interim_alignment` flag)
-2. Added options to specify a maximum number of mismatches to allow during mapping; this is specified separately for mlst and genes, so that it is possible to relax the stringency of gene detection in the same run as a high-accuracy MLST test.
-  * `--mlst_max_mismatch`
-  * `--gene_max_mismatch`
-  * Default value for both is 10 mismatches.
-3. The highest minor allele frequency (MAF) of variants encountered in the alignment is now calculated and reported for each allele (in the scores file) and also at the gene level and ST level, to facilitate checking for mixed/contaminated read sets. 
-This value is in the range 0 -> 0.5; with e.g. 0 indicating no variation between reads at any aligned base (i.e. at all positions in the alignment, all aligned reads agree on the same base call; although this agreed base may be different from the reference); and 0.25 indicating there is at least one position in the alignment at which all reads do not agree, and the least common variant (either match or mismatch to the reference) is present in 25% of reads. This value is printed, for all alleles, to the scores file. Note this is different to the ‘LeastConfident’ information printed to scores, which presents the strongest evidence for mismatch *compared to the reference*, i.e. between 0 -> 1.
-The highest such value for each gene/cluster/locus is reported in the fullgenes output table.
-The highest such value across all MLST loci is reported in the mlst output table.
-Note that all compiled reports will now include a maxMAF column; if you provide MLST or compiled reports from previous versions without this columns, the value “NC” will be inserted in the maxMAF column to indicate “not calculated”. This ensures the updated SRST2 (v0.1.4+) is backwards compatible with previous SRST2 outputs; do be aware though that the older versions of SRST2 (<v0.1.4) will not be forwards-compatible with output generated by more recent versions (v0.14 onwards).
-4. Added R code for plotting SRST2 output in R (plotSRST2data.R). Instructions will be added to the read me.
-5. Added formatted versions of the ARG-Annot resistance gene database, PlasmidFinder database and 18 plasmid replicon sequences to the /data directory. See /data/README.md for details and citations. It is recommended to use `ARGannot.r1.fasta` for detection of acquired resistance genes.
-
------------
- 
-Updates in v0.1.3
-
-1. Fixed a bug that occurred while trying to type genes from a user-supplied database (see issue #5, thanks to Scott Long)
-2. Fixed a bug in gene detection reporting - genes are now correctly reported by cluster, rather than by gene symbol (see issue #7)
-3. Added maximum divergence option for reporting (`--max_divergence`), default is now to report only hits with <10% divergence from the database (see issue #8)
-4. added parameter to pass to bowtie2 parameter `-u N` to stop mapping after the first N reads. Default behaviour remains to map all reads. However, for large read sets (e.g. >100x), extra reads do not help and merely increase the time taken for mapping and scoring, and you may want to limit to the first million reads (100x of a 2 Mbp genome) using `--stop_after 1000000`.
+> **Note on tool versions.** Unlike upstream SRST2 — which recommended the
+> decade-old samtools v0.1.18 — this fork targets modern samtools. The
+> obsolete `samtools mpileup -L` flag (removed from samtools in 1.9) has been
+> dropped, and the bowtie2/samtools version checks are now minimum-version
+> gates rather than hardcoded exact-match lists. See [CHANGELOG.md](CHANGELOG.md).
 
 
 # Installation
 
-### 1 - Install dependencies
+### 1 - Install the external tools
 
-* python (v2.7.5)
-* scipy http://www.scipy.org/install.html
-* bowtie2 v2.1.0 http://bowtie-bio.sourceforge.net/bowtie2/index.shtml
-* SAMtools v0.1.18 https://sourceforge.net/projects/samtools/files/samtools/0.1.18/ (NOTE 0.1.19 DOES NOT WORK)
+These must be available on your `PATH` (or pointed to via the environment
+variables below):
+
+* **bowtie2 ≥ 2.4** (tested with 2.5.4) — http://bowtie-bio.sourceforge.net/bowtie2/
+  The `bowtie2` launcher is a Perl script, so **`perl`** must also be on your `PATH`.
+* **samtools ≥ 1.9** (tested with 1.22) — https://www.htslib.org/
+
+The Python dependencies (**scipy**, **numpy**, **biopython**) are installed
+automatically by `pip` in step 2 — you no longer need to install them by hand.
 
 N.B. If you have multiple versions of samtools or bowtie2 installed, you can pick which one `srst2` or `slurm_srst2` should use by setting the following environment variables.
 
@@ -187,13 +128,14 @@ If these aren't set or are missing, they will default to looking in your `PATH` 
 
 ### 2 - Get and install the code
 
-Make sure you have installed [git](https://help.github.com/articles/set-up-git) and [pip](http://www.pip-installer.org/).
+Requires **Python ≥ 3.12**, [git](https://help.github.com/articles/set-up-git), and [pip](https://pip.pypa.io/).
 
-Clone the git repository: `git clone https://github.com/katholt/srst2`
+Clone the git repository and install with pip (this also pulls in scipy, numpy and biopython):
 
-and then install with pip: `pip install srst2/`
-
-OR do both at once: `sudo pip install git+https://github.com/katholt/srst2`
+```
+git clone https://github.com/amd-ph-core/srst2
+pip install ./srst2
+```
 
 ### 3 - Test that the programs are installed properly
 
@@ -413,9 +355,9 @@ In addition to MLST, SRST2 can do gene/allele detection. This works by mapping r
 
 If the input database contains different alelles of the same gene, SRST2 can report just the best matching allele for that gene (much like with MLST we report the best matching allele for each locus in the scheme). This makes the output manageable, as you will get one column per gene/locus (e.g. blaCTX-M) which reports the specific allele that was called in each sample (e.g. blaCTX-M-15 in sample A, blaCTX-M-13 in sample B).
 
-We have provided some databases of resistance genes, plasmid genes and [E. coli serotyping loci](https://github.com/katholt/srst2#using-the-ecoh-database-for-serotyping-e-coli-with-srst2) in /data, ready for use with SRST2. We recommend using /data/ARGannot.r1.fasta for detecting resistance genes, but you can also use /data/ResFinder.fasta (this is the same as /data/resistance.fasta in earlier distributions of SRST2).
+We have provided some databases of resistance genes, plasmid genes and [E. coli serotyping loci](#using-the-ecoh-database-for-serotyping-e-coli-with-srst2) in /data, ready for use with SRST2. We recommend using /data/ARGannot.r1.fasta for detecting resistance genes, but you can also use /data/ResFinder.fasta (this is the same as /data/resistance.fasta in earlier distributions of SRST2).
 
-You can however format any sequence set for screening with SRST2. [See instructions below](https://github.com/katholt/srst2#generating-srst2-compatible-clustered-database-from-raw-sequences).
+You can however format any sequence set for screening with SRST2. [See instructions below](#generating-srst2-compatible-clustered-database-from-raw-sequences).
 
 # Output files
 
