@@ -11,6 +11,34 @@ for continued use.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-18
+
+Maintenance release: brings the `database_clustering/` helper scripts up to a
+modern Python 3 / Biopython stack and removes the `rpy2` + R dependency.
+
+### Changed
+
+- Rewrote `database_clustering/align_plot_tree_min3.py` as pure Python, dropping
+  the `rpy2` + R (`ape`) dependency. It now builds neighbour-joining trees with
+  Biopython (`AlignIO` + `Bio.Phylo.TreeConstruction`) and renders them to a
+  multi-page PDF with matplotlib, and takes an argparse CLI (`--input_dir`,
+  `--pattern`, `--output`, `--min_seqs`) in place of the previous hardcoded
+  path. `matplotlib` is now declared in `setup.py`. (Generating the input
+  alignments with an external aligner such as muscle/mafft remains a
+  prerequisite.) ([#41])
+
+### Fixed
+
+- Modernized the `database_clustering/` helper scripts for Python 3 and current
+  Biopython, with no behavior or CLI changes: dropped the removed `Bio.Alphabet`
+  import from `VFDBgenus.py` and `csv_to_gene_db.py`; removed the alphabet
+  argument from `Seq(...)` (removed in modern Biopython); replaced the removed
+  `Bio.Align.Applications.MuscleCommandline` in `align_plot_tree_min3.py` with a
+  direct command construction (execution stays disabled, as before); raw-stringed
+  the invalid-escape regexes; removed dead imports; and defined the previously
+  undefined `DoError` helper in `csv_to_gene_db.py` so its argument-validation
+  paths exit cleanly instead of raising `NameError`. ([#39])
+
 ## [0.3.0] - 2026-07-18
 
 The first working, modernized Python 3 release. SRST2 v0.2.0 (the last upstream
@@ -106,7 +134,8 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
   allele names containing a dot (e.g. `NG_047667.1`) no longer raise
   `IndexError`. Reproduces the first inline "jvhagey" production patch. ([#5])
 
-[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...dev
+[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...dev
+[0.3.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...v0.3.0
 [#1]: https://github.com/amd-ph-core/srst2/issues/1
 [#3]: https://github.com/amd-ph-core/srst2/issues/3
@@ -124,3 +153,5 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#30]: https://github.com/amd-ph-core/srst2/issues/30
 [#32]: https://github.com/amd-ph-core/srst2/issues/32
 [#34]: https://github.com/amd-ph-core/srst2/issues/34
+[#39]: https://github.com/amd-ph-core/srst2/issues/39
+[#41]: https://github.com/amd-ph-core/srst2/issues/41

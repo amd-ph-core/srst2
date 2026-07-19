@@ -7,15 +7,19 @@
 # Author: Kat Holt (kholt@unimelb.edu.au)
 
 # modules
-import string, re, collections
-import os, sys, subprocess
+import sys
 from optparse import OptionParser
 
 # BioPython modules for reading and writing sequences
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from Bio.Alphabet import IUPAC
+
+
+def DoError(message):
+    """Print an error message to stderr and exit."""
+    sys.stderr.write("Error: " + str(message) + "\n")
+    sys.exit(1)
 
 
 def main():
@@ -116,9 +120,7 @@ if __name__ == "__main__":
 
             if seqid_col:
                 seq = fields.pop(seqid_col - 1)
-                record = SeqRecord(
-                    Seq(seq, IUPAC.unambiguous_dna), id=db_id, description=db_id
-                )
+                record = SeqRecord(Seq(seq), id=db_id, description=db_id)
             elif seqs_file_col:
                 seqs_file_id = fields.pop(seqs_file_col - 1)
                 if seqs_file_id in input_seqs:
