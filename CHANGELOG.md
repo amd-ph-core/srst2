@@ -29,6 +29,19 @@ for continued use.
 
 ### Fixed
 
+- Adopted upstream fix #69 ("round penalty to integer", commit `9eaedff`) that
+  our `v0.2.0`-based port was missing: the deletion/edge penalties in
+  `read_pileup_data` are now `round(penalty)` rather than the raw float. This
+  matches the later upstream commit (`73f885f`) that the earlier production
+  builds actually ran, which our baseline was behind. Behavioral scoring change;
+  re-validate against the PHoeNIx reference dataset before production. (Note:
+  Python 3's `round()` uses banker's rounding for exact `.5` values, a minor
+  difference from Python 2's round-half-up.) ([#52])
+- `qsub_srst2.py` now uses a `#!/usr/bin/env python3` shebang instead of a
+  hardcoded Python 2.7 interpreter path; `slurm_srst2.py` uses a generic
+  `module load srst2` and only passes `--threads` when >1; and
+  `database_clustering/VFDB_cdhit_to_csv.py` also recognises `gb|` accessions in
+  VFDB headers. (Carried over from upstream `73f885f`.) ([#52])
 - Hardened shell/command construction against spaces and metacharacters in
   filenames. `getmlst.py` reads the first line of the combined FASTA in pure
   Python instead of `os.popen("head -n 1 " + filename)`. `slurm_srst2.py`
@@ -199,3 +212,4 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#46]: https://github.com/amd-ph-core/srst2/issues/46
 [#48]: https://github.com/amd-ph-core/srst2/issues/48
 [#50]: https://github.com/amd-ph-core/srst2/issues/50
+[#52]: https://github.com/amd-ph-core/srst2/issues/52
