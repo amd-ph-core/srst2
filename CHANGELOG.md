@@ -11,6 +11,22 @@ for continued use.
 
 ## [Unreleased]
 
+### Changed
+
+- All alleles tied at the best score are now reported per gene/cluster, instead
+  of a single arbitrary winner. Previously only `scores_sorted[0]` was reported,
+  so when alleles tied at the top score the "winner" depended on the iteration
+  order of the score dict (arbitrary, and historically non-deterministic across
+  Python 2 dict orderings) — scientifically indefensible. Alleles are now sorted
+  deterministically (score, then name); every allele tied at the top is
+  reported. Gene detection joins the tied allele names in the summary cell
+  (e.g. `aadA1/aadA2`) and writes one `fullgenes` row per allele; MLST joins the
+  tied allele numbers (e.g. `11/14`) and flags the ST uncertain (`?`), since the
+  locus — and therefore the ST — is ambiguous. The truncation heuristic still
+  applies only to a single, clean, well-covered top allele. Behavioral change;
+  the single-allele case (the overwhelming majority) is unchanged. Re-validate
+  against the PHoeNIx reference dataset before production. ([#46])
+
 ### Fixed
 
 - Multi-digit indel lengths in the pileup are no longer mis-parsed. In
@@ -167,3 +183,4 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#39]: https://github.com/amd-ph-core/srst2/issues/39
 [#41]: https://github.com/amd-ph-core/srst2/issues/41
 [#44]: https://github.com/amd-ph-core/srst2/issues/44
+[#46]: https://github.com/amd-ph-core/srst2/issues/46
