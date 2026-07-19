@@ -116,7 +116,7 @@ class TestGetBowtieExecs(unittest.TestCase):
 
 class TestBowtieIndex(unittest.TestCase):
     @patch("srst2.logging")
-    @patch("srst2.check_command_versions")
+    @patch("srst2.require_min_version")
     @patch("srst2.run_command")
     @patch("srst2.os.path")
     @patch("srst2.os.environ")
@@ -139,7 +139,7 @@ class TestBowtieIndex(unittest.TestCase):
         run_mock.assert_called_once_with(["/usr/bin/bowtie2-build", "foo", "foo"])
 
     @patch("srst2.logging")
-    @patch("srst2.check_command_versions")
+    @patch("srst2.require_min_version")
     @patch("srst2.run_command")
     @patch("srst2.os.path")
     @patch("srst2.os.environ")
@@ -159,7 +159,7 @@ class TestBowtieIndex(unittest.TestCase):
 
 class TestRunBowtie(unittest.TestCase):
     @patch("srst2.logging")
-    @patch("srst2.check_command_versions")
+    @patch("srst2.require_min_version")
     @patch("srst2.run_command")
     @patch("srst2.os.path")
     @patch("srst2.os.environ")
@@ -202,7 +202,7 @@ class TestRunBowtie(unittest.TestCase):
         run_mock.assert_called_once_with(expected_bowtie2_command)
 
     @patch("srst2.logging")
-    @patch("srst2.check_command_versions")
+    @patch("srst2.require_min_version")
     @patch("srst2.run_command")
     @patch("srst2.os.path")
     @patch("srst2.os.environ")
@@ -242,7 +242,7 @@ class TestRunBowtie(unittest.TestCase):
 class TestMPileup(unittest.TestCase):
     @patch("srst2.open", create=True)
     @patch("srst2.logging")
-    @patch("srst2.check_command_versions")
+    @patch("srst2.require_min_version")
     @patch("srst2.run_command")
     @patch("srst2.os.path")
     @patch("srst2.os.environ")
@@ -312,7 +312,7 @@ class TestMPileup(unittest.TestCase):
 
     @patch("srst2.open", create=True)
     @patch("srst2.logging")
-    @patch("srst2.check_command_versions")
+    @patch("srst2.require_min_version")
     @patch("srst2.run_command")
     @patch("srst2.os.path")
     @patch("srst2.os.environ")
@@ -378,7 +378,7 @@ class TestMPileup(unittest.TestCase):
 
 
 class TestSamtoolsIndex(unittest.TestCase):
-    @patch("srst2.check_command_versions")
+    @patch("srst2.require_min_version")
     @patch("srst2.run_command")
     @patch("srst2.os.path")
     @patch("srst2.os.environ")
@@ -396,7 +396,7 @@ class TestSamtoolsIndex(unittest.TestCase):
         expected_samtools_command = ["/usr/bin/samtools", "faidx", "fasta"]
         run_mock.assert_called_once_with(expected_samtools_command)
 
-    @patch("srst2.check_command_versions")
+    @patch("srst2.require_min_version")
     @patch("srst2.run_command")
     @patch("srst2.os.path")
     @patch("srst2.os.environ")
