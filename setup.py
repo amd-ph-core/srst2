@@ -22,13 +22,15 @@ setup(
         "genes, etc) and report the presence of STs and/or"
         "reference genes."
     ),
+    python_requires=">=3.12",
     install_requires=[
-        # Although we depend on scipy, which depends on numpy, we don't
-        # specify the dependencies here because they don't play well with
-        # any Python installing system, such as pip or easy_install.
-        # So we assume the user has already installed the dependencies
-        # themselves.
-        # "numpy >= 1.7.1",
-        # "scipy >= 0.12.0",
+        # Declare the runtime dependencies so pip provisions them, but do not
+        # pin lower bounds: srst2.py uses only long-stable scipy.stats APIs
+        # (binom, linregress) and consensus_alignment.py uses Biopython's SeqIO,
+        # none of which need a specific version. Add a lower bound only if a
+        # concrete incompatibility ever forces one.
+        "numpy",
+        "scipy",
+        "biopython",
     ],
 )
