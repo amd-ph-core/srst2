@@ -1,10 +1,8 @@
+import os
+
 import rpy2.robjects as robjects
 
 r = robjects.r
-
-from Bio.Align.Applications import MuscleCommandline
-import os
-import subprocess as sub
 
 fasta_directory = "/home/UNIMELB/hdashnow/resistance_database/by_gene"
 
@@ -22,9 +20,11 @@ print("Number of input files:", len(files))
 # Save the alignment file names so that they can be used in R ape
 for f in files:
     outfilename = (f + ".aln").replace("(", "").replace(")", "")
-    # print outfilename
-    alignment = MuscleCommandline(input=f, out=outfilename)
-    # alignment()
+    # Bio.Align.Applications.MuscleCommandline was removed from Biopython; build
+    # the muscle command directly. Execution stays disabled, as in the original
+    # (the R block below reads pre-existing .aln files).
+    alignment = ["muscle", "-in", f, "-out", outfilename]
+    # subprocess.run(alignment, check=True)
 
 
 r("""
@@ -46,7 +46,7 @@ r("""
                     #print(filename)
 		    min_filename = tail(strsplit(filename,"/")[[1]],1) # This needs to be made robust
 		    #print(min_filename)
-		    gene_name = strsplit(min_filename,"\\\.")[[1]][1]
+		    gene_name = strsplit(min_filename,"\\\\.")[[1]][1]
 		    #print(cluster)
 		    title(paste("Gene: ", gene_name))
     		    #dev.off()
