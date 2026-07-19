@@ -516,7 +516,7 @@ def parse_fai(fai_file, db_type, delimiter):
     )
 
 
-def read_pileup_data(pileup_file, size, prob_err, consensus_file=""):
+def read_pileup_data(pileup_file, size, prob_err, sample_name, consensus_file=""):
     with open(pileup_file) as pileup:
         prob_success = 1 - prob_err  # Set by user, default is prob_err = 0.01
         hash_alignment = {}
@@ -667,22 +667,12 @@ def read_pileup_data(pileup_file, size, prob_err, consensus_file=""):
                 elif consensus_file.split(".")[-2] == "all_consensus_alleles":
                     consensus_type = "consensus"
                 with open(consensus_file, "a") as consensus_outfile:
-                    # Extract the sample name from the pileup filename. Splitting
-                    # positionally on "." breaks for allele names that contain a
-                    # dot (e.g. NG_047667.1), so split on the "__" sample
-                    # delimiter and strip the trailing ".<db>.pileup" suffix,
-                    # falling back to the basename if that structure is absent.
-                    try:
-                        pileup_parts = os.path.basename(pileup_file).split("__")
-                        sample_id = (
-                            pileup_parts[1].split(".")[0]
-                            if len(pileup_parts) >= 2
-                            else os.path.basename(pileup_file)
-                        )
-                    except (IndexError, AttributeError):
-                        sample_id = os.path.basename(pileup_file)
+                    # Use the sample name passed in directly rather than parsing it
+                    # out of the pileup filename; the old positional parse
+                    # (pileup_file.split(".")[1].split("__")[1]) crashed on
+                    # paths/prefixes containing extra "." (upstream #99/#143).
                     consensus_outfile.write(
-                        ">{0}.{1} {2}\n".format(allele, consensus_type, sample_id)
+                        ">{0}.{1} {2}\n".format(allele, consensus_type, sample_name)
                     )
                     outstring = consensus_seq + "\n"
                     consensus_outfile.write(outstring)
@@ -1405,6 +1395,7 @@ def parse_scores(
     unique_cluster_symbols,
     unique_allele_symbols,
     pileup_file,
+    sample_name,
 ):
 
     # sort into hash for each gene locus
@@ -1518,6 +1509,7 @@ def parse_scores(
                         allele_pileup_file,
                         size_allele,
                         args.prob_err,
+                        sample_name,
                         consensus_file=new_alleles_filename,
                     )
             if args.report_all_consensus:
@@ -1527,6 +1519,7 @@ def parse_scores(
                     allele_pileup_file,
                     size_allele,
                     args.prob_err,
+                    sample_name,
                     consensus_file=new_alleles_filename,
                 )
 
@@ -2061,7 +2054,7 @@ def map_fileSet_to_db(
             missing_allele,
             size_allele,
             next_to_del_depth_allele,
-        ) = read_pileup_data(pileup_file, size, args.prob_err)
+        ) = read_pileup_data(pileup_file, size, args.prob_err, sample_name)
 
         # Generate scores for all alleles (prints these and associated info if verbose)
         #   result = dict, with key=allele, value=score
@@ -2105,6 +2098,7 @@ def map_fileSet_to_db(
         unique_gene_symbols,
         unique_allele_symbols,
         pileup_file,
+        sample_name,
     )
 
     # REPORT/RECORD RESULTS

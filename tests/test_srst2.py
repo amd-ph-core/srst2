@@ -445,6 +445,7 @@ class TestReadPileupData(unittest.TestCase):
                 pileup_path,
                 {"testallele": 3},
                 0.01,
+                "sampleX",
                 consensus_file=consensus_path,
             )
 
@@ -507,6 +508,7 @@ class TestParseScoresTies(unittest.TestCase):
             True,  # unique_cluster_symbols
             True,  # unique_allele_symbols
             "",  # pileup_file (consensus reporting off)
+            "sample",  # sample_name
         )
 
     def test_all_tied_top_alleles_reported(self):
