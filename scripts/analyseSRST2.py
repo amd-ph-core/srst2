@@ -12,7 +12,6 @@ from argparse import ArgumentParser, FileType
 import logging
 from subprocess import call, check_output, CalledProcessError, STDOUT
 import os, sys, re, collections, operator
-from scipy.stats import binom_test, linregress
 from math import log
 from itertools import groupby
 from operator import itemgetter
