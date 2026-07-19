@@ -551,5 +551,31 @@ class TestGetAlleleNameMlstDelimiter(unittest.TestCase):
         self.assertEqual((gene_name, allele_name), ("arcC", "5"))
 
 
+class TestLabelOption(unittest.TestCase):
+    # issue #62 (upstream katholt/srst2#109): --label sets the sample name.
+    def _args(self, input_se, label):
+        import types
+
+        return types.SimpleNamespace(
+            input_se=input_se,
+            input_pe=None,
+            label=label,
+            forward="_1",
+            reverse="_2",
+        )
+
+    def test_label_renames_single_readset(self):
+        fileSets = srst2.read_file_sets(self._args(["sampleA.fastq"], "MYLABEL"))
+        self.assertEqual(fileSets, {"MYLABEL": ["sampleA.fastq"]})
+
+    def test_no_label_infers_from_filename(self):
+        fileSets = srst2.read_file_sets(self._args(["sampleA.fastq"], ""))
+        self.assertEqual(fileSets, {"sampleA": ["sampleA.fastq"]})
+
+    def test_label_with_multiple_readsets_errors(self):
+        with self.assertRaises(SystemExit):
+            srst2.read_file_sets(self._args(["a.fastq", "b.fastq"], "X"))
+
+
 if __name__ == "__main__":
     unittest.main()
