@@ -1330,6 +1330,19 @@ def get_allele_name_from_db(
 
     else:
         gene_name = allele.split(args.mlst_delimiter)
+        if len(gene_name) < 2:
+            # The allele name has no --mlst_delimiter, so the gene/allele-number
+            # split fails. Raise a clear CommandError (caught per sample in
+            # process_fasta_db) instead of a cryptic IndexError that crashes the
+            # whole run (upstream #113).
+            raise CommandError(
+                "MLST allele '{0}' does not contain the --mlst_delimiter '{1}'. "
+                "Check that --mlst_delimiter matches the separator between the "
+                "gene name and allele number in your MLST database "
+                "(e.g. '-' for arcc-1, '_' for arcc_1).".format(
+                    allele, args.mlst_delimiter
+                )
+            )
         allele_name = gene_name[1]
         gene_name = gene_name[0]
         seqid = None

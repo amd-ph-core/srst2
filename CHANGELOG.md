@@ -40,6 +40,13 @@ for continued use.
 
 ### Fixed
 
+- MLST allele names that do not contain the `--mlst_delimiter` no longer crash
+  the whole run with a cryptic `IndexError`. `get_allele_name_from_db` now
+  raises a clear `CommandError` naming the allele and delimiter, which is caught
+  per sample (the sample is recorded as failed and the run continues) — a
+  common cause of the upstream `list index out of range` reports
+  ([katholt#113]). ([#60])
+
 - Consensus headers now use the actual `sample_name` (threaded through
   `read_pileup_data`/`parse_scores`) instead of parsing it out of the pileup
   filename. The old positional parse (`pileup_file.split(".")[1].split("__")[1]`)
@@ -234,5 +241,7 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#50]: https://github.com/amd-ph-core/srst2/issues/50
 [#52]: https://github.com/amd-ph-core/srst2/issues/52
 [#55]: https://github.com/amd-ph-core/srst2/issues/55
+[#60]: https://github.com/amd-ph-core/srst2/issues/60
 [katholt#99]: https://github.com/katholt/srst2/issues/99
+[katholt#113]: https://github.com/katholt/srst2/issues/113
 [katholt#143]: https://github.com/katholt/srst2/issues/143
