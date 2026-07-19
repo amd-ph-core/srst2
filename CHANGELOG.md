@@ -11,6 +11,17 @@ for continued use.
 
 ## [Unreleased]
 
+### Fixed
+
+- Multi-digit indel lengths in the pileup are no longer mis-parsed. In
+  `read_pileup_data`, `+`/`-` indels were skipped by reading only the first
+  digit of the length (`int(aligned_bases[i + 1])`), so any indel of 10 bp or
+  more advanced the parser incorrectly and the remaining indel bases were
+  counted as matches/SNPs — mis-counting mismatches and corrupting the
+  consensus. Now consume all consecutive digits after `+`/`-` and skip that
+  many bases. This is a behavioral fix — results change for reads spanning an
+  indel of 10 bp or more. ([#44])
+
 ## [0.3.1] - 2026-07-18
 
 Maintenance release: brings the `database_clustering/` helper scripts up to a
@@ -155,3 +166,4 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#34]: https://github.com/amd-ph-core/srst2/issues/34
 [#39]: https://github.com/amd-ph-core/srst2/issues/39
 [#41]: https://github.com/amd-ph-core/srst2/issues/41
+[#44]: https://github.com/amd-ph-core/srst2/issues/44

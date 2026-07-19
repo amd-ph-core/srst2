@@ -2,6 +2,7 @@
 
 import os
 import sys
+import tempfile
 import unittest
 
 from unittest.mock import MagicMock, patch
@@ -415,6 +416,43 @@ class TestSamtoolsIndex(unittest.TestCase):
         self.assertEqual(version_mock.call_args_list[0][0][0], ["samtools"])
         expected_samtools_command = ["samtools", "faidx", "fasta"]
         run_mock.assert_called_once_with(expected_samtools_command)
+
+
+class TestReadPileupData(unittest.TestCase):
+    def test_multidigit_indel_not_miscounted(self):
+        # Regression test for issue #44: an mpileup indel length can be multiple
+        # digits (e.g. +12ACGT...). The parser must consume ALL digits after
+        # +/- and skip that many bases; otherwise the inserted bases are
+        # mis-counted as SNPs and corrupt the consensus.
+        #
+        # Position 2 (ref C) has one read matching the reference plus a 12 bp
+        # insertion (.+12GGGGGGGGGGGG). The consensus base there must stay the
+        # reference C. The old single-digit parse read int("1"), advanced 3, and
+        # counted the twelve Gs as SNPs, flipping the consensus base to G
+        # (consensus "AGG" instead of "ACG").
+        pileup_lines = [
+            "testallele\t1\tA\t1\t.\tI",
+            "testallele\t2\tC\t1\t.+12GGGGGGGGGGGG\tI",
+            "testallele\t3\tG\t1\t.\tI",
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            pileup_path = os.path.join(tmp, "test__sampleX.testdb.pileup")
+            with open(pileup_path, "w") as fh:
+                fh.write("\n".join(pileup_lines) + "\n")
+            consensus_path = os.path.join(tmp, "out.all_consensus_alleles.fasta")
+
+            srst2.read_pileup_data(
+                pileup_path,
+                {"testallele": 3},
+                0.01,
+                consensus_file=consensus_path,
+            )
+
+            with open(consensus_path) as fh:
+                lines = fh.read().splitlines()
+
+        # lines[0] is the FASTA header, lines[1] the consensus sequence.
+        self.assertEqual(lines[1], "ACG")
 
 
 if __name__ == "__main__":
