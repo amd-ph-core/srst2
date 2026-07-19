@@ -10,7 +10,7 @@ on a different cluster using Grid Engine.
 """
 
 import string, re, collections
-import os, sys, subprocess
+import os, sys, subprocess, shlex
 from subprocess import call, check_output, CalledProcessError, STDOUT
 from argparse import ArgumentParser, FileType
 import logging
@@ -364,16 +364,16 @@ def main():
         cmd += "\n#$ -N qsub_srst2"
         cmd += "\n#$ -q " + args.queue
         cmd += "\nmodule load srst2"
-        cmd += "\ncd " + args.rundir
+        cmd += "\ncd " + shlex.quote(args.rundir)
         cmd += "\nsrst2"
         fastq = fileSets[sample]
         if len(fastq) > 1:
-            cmd += " --input_pe " + fastq[0] + " " + fastq[1]
+            cmd += " --input_pe " + shlex.quote(fastq[0]) + " " + shlex.quote(fastq[1])
             cmd += " --forward " + args.forward
             cmd += " --reverse " + args.reverse
         else:
-            cmd += " --input_se " + fastq[0]
-        cmd += " --output " + sample + "_" + args.output
+            cmd += " --input_se " + shlex.quote(fastq[0])
+        cmd += " --output " + shlex.quote(sample + "_" + args.output)
         cmd += " --log"
         cmd += " " + args.other_args
 

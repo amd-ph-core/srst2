@@ -29,6 +29,13 @@ for continued use.
 
 ### Fixed
 
+- Hardened shell/command construction against spaces and metacharacters in
+  filenames. `getmlst.py` reads the first line of the combined FASTA in pure
+  Python instead of `os.popen("head -n 1 " + filename)`. `slurm_srst2.py`
+  submits the job script through `subprocess` on `sbatch`'s stdin instead of
+  `os.system('echo "..." | sbatch')`, and both `slurm_srst2.py` and
+  `qsub_srst2.py` now `shlex.quote` the fastq paths, run directory, and output
+  prefix embedded in the submitted command. ([#50])
 - The pre-run consensus cleanup now removes the files that are actually written
   (`${output}.new_consensus_alleles.fasta` and, when `--report_all_consensus`
   is set, `${output}.all_consensus_alleles.fasta`) instead of a never-written
@@ -191,3 +198,4 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#44]: https://github.com/amd-ph-core/srst2/issues/44
 [#46]: https://github.com/amd-ph-core/srst2/issues/46
 [#48]: https://github.com/amd-ph-core/srst2/issues/48
+[#50]: https://github.com/amd-ph-core/srst2/issues/50
