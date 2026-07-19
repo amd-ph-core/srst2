@@ -177,6 +177,8 @@ class TestRunBowtie(unittest.TestCase):
         arg_mock.read_type = "foo"
         arg_mock.stop_after = False
         arg_mock.other = False
+        arg_mock.threads = 1
+        arg_mock.use_existing_bowtie2_sam = False
         actual_sam = srst2.run_bowtie(
             "mapping_file", "sample", ["fastq"], arg_mock, "db_name", "db_path"
         )
@@ -216,6 +218,8 @@ class TestRunBowtie(unittest.TestCase):
         arg_mock.read_type = "foo"
         arg_mock.stop_after = False
         arg_mock.other = False
+        arg_mock.threads = 1
+        arg_mock.use_existing_bowtie2_sam = False
         actual_sam = srst2.run_bowtie(
             "mapping_file", "sample", ["fastq"], arg_mock, "db_name", "db_path"
         )
@@ -260,6 +264,7 @@ class TestMPileup(unittest.TestCase):
         arg_mock.mapq = 30
         arg_mock.baseq = 40
         arg_mock.samtools_args = []
+        arg_mock.threads = 1
         arg_mock.keep_interim_alignment = True  # They're not actually created
         fake_file = MagicMock()
         fake_open_context = MagicMock(**{"__enter__.return_value": fake_file})
@@ -297,8 +302,6 @@ class TestMPileup(unittest.TestCase):
         expected_mpileup_command = [
             "/usr/bin/samtools",
             "mpileup",
-            "-L",
-            "1000",
             "-f",
             "fasta",
             "-Q",
@@ -326,6 +329,7 @@ class TestMPileup(unittest.TestCase):
         arg_mock.mapq = 30
         arg_mock.baseq = 40
         arg_mock.samtools_args = []
+        arg_mock.threads = 1
         arg_mock.keep_interim_alignment = True  # They're not actually created
         fake_file = MagicMock()
         fake_open_context = MagicMock(**{"__enter__.return_value": fake_file})
@@ -363,8 +367,6 @@ class TestMPileup(unittest.TestCase):
         expected_mpileup_command = [
             "samtools",
             "mpileup",
-            "-L",
-            "1000",
             "-f",
             "fasta",
             "-Q",
