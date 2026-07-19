@@ -247,5 +247,6 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#60]: https://github.com/amd-ph-core/srst2/issues/60
 [#62]: https://github.com/amd-ph-core/srst2/issues/62
 [katholt#99]: https://github.com/katholt/srst2/issues/99
+[katholt#109]: https://github.com/katholt/srst2/issues/109
 [katholt#113]: https://github.com/katholt/srst2/issues/113
 [katholt#143]: https://github.com/katholt/srst2/issues/143
