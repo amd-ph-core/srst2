@@ -47,6 +47,11 @@ for continued use.
 
 ### Fixed
 
+- `consensus_alignment.py` now imports under modern Biopython. It imported the
+  `Bio.Alphabet` module (removed in Biopython 1.78) plus unused `Seq`/
+  `SeqRecord`; only `SeqIO` is actually used. Dropped the three unused imports —
+  no alphabet is needed. Verified end-to-end splitting real srst2 consensus
+  output into per-locus FASTAs on Biopython 1.86. ([#32])
 - `analyseSRST2.py` now imports under a modern SciPy. It carried a dead
   `from scipy.stats import binom_test, linregress` import (neither name is used
   in the file); `binom_test` was removed in SciPy 1.12, so the stale import
@@ -112,3 +117,4 @@ for continued use.
 [#26]: https://github.com/amd-ph-core/srst2/issues/26
 [#28]: https://github.com/amd-ph-core/srst2/issues/28
 [#30]: https://github.com/amd-ph-core/srst2/issues/30
+[#32]: https://github.com/amd-ph-core/srst2/issues/32

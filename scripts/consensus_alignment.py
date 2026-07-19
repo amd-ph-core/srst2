@@ -7,11 +7,10 @@ import string, re, collections
 import os, sys, subprocess
 from argparse import ArgumentParser, FileType
 
-# BioPython modules for reading and writing sequences
+# BioPython, for reading sequences. Only SeqIO is used; the old Bio.Alphabet
+# import (removed in Biopython 1.78) and the unused Seq/SeqRecord imports have
+# been dropped — nothing here needs a sequence alphabet.
 from Bio import SeqIO
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
-from Bio.Alphabet import IUPAC
 
 
 def parse_args():
