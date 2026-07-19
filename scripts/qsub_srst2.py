@@ -199,40 +199,16 @@ def run_command(command, **kwargs):
         raise CommandError(message)
 
 
-def check_bowtie_version():
-    check_command_versions(
-        [get_bowtie_execs()[0], "--version"],
-        "version ",
-        "bowtie",
-        [
-            "2.1.0",
-            "2.2.3",
-            "2.2.4",
-            "2.2.5",
-            "2.2.6",
-            "2.2.7",
-            "2.2.8",
-            "2.2.9",
-            "2.3.",
-            "2.4.",
-            "2.5.",
-            "2.6.",
-        ],
-    )
+# Minimum supported tool versions (see srst2.py for rationale). Any release at
+# or above these floors is accepted. Tested against bowtie2 2.5.4 / samtools
+# 1.22.1.
+BOWTIE2_MIN_VERSION = (2, 4, 0)
+SAMTOOLS_MIN_VERSION = (1, 9)
 
 
-def check_samtools_version():
-    check_command_versions(
-        [get_samtools_exec()],
-        "Version: ",
-        "samtools",
-        ["0.1.18", "0.1.19"] + ["1.{}".format(x) for x in range(0, 30)],
-    )
-
-
-def check_command_versions(
-    command_list, version_prefix, command_name, required_versions
-):
+def get_tool_version(command_list, command_name, version_regex):
+    """Run a tool and return (version_tuple, version_string) parsed from its
+    output. Exits if the tool cannot be run or its version cannot be parsed."""
     try:
         command_stdout = check_output(command_list, stderr=STDOUT)
     except OSError as e:
@@ -246,23 +222,54 @@ def check_command_versions(
         # when you ask for the version (sigh). We ignore it here.
         command_stdout = e.output
 
-    # check_output returns bytes in Python 3; decode before the `str in ...`
-    # membership tests below.
     if isinstance(command_stdout, (bytes, bytearray)):
         command_stdout = command_stdout.decode(errors="replace")
 
-    version_ok = False
-    for v in required_versions:
-        if version_prefix + v in command_stdout:
-            version_ok = True
-
-    if not version_ok:
-        logging.error("Incorrect version of {} installed.".format(command_name))
+    match = re.search(version_regex, command_stdout)
+    if match is None:
         logging.error(
-            "{} versions compatible with SRST2 are ".format(command_name)
-            + ", ".join(required_versions)
+            "Could not parse the version of {} from its output.".format(command_name)
         )
         exit(-1)
+    version_string = match.group(1)
+    version_tuple = tuple(int(part) for part in version_string.split("."))
+    return version_tuple, version_string
+
+
+def require_min_version(command_list, command_name, version_regex, min_version):
+    """Enforce command_name >= min_version; exit otherwise. Returns the parsed
+    version string on success."""
+    version_tuple, version_string = get_tool_version(
+        command_list, command_name, version_regex
+    )
+    if version_tuple < min_version:
+        logging.error(
+            "{name} {found} is installed, but SRST2 requires {name} >= {want}.".format(
+                name=command_name,
+                found=version_string,
+                want=".".join(str(part) for part in min_version),
+            )
+        )
+        exit(-1)
+    return version_string
+
+
+def check_bowtie_version():
+    return require_min_version(
+        [get_bowtie_execs()[0], "--version"],
+        "bowtie2",
+        r"version (\d+(?:\.\d+)+)",
+        BOWTIE2_MIN_VERSION,
+    )
+
+
+def check_samtools_version():
+    return require_min_version(
+        [get_samtools_exec()],
+        "samtools",
+        r"Version:\s*(\d+(?:\.\d+)+)",
+        SAMTOOLS_MIN_VERSION,
+    )
 
 
 def get_bowtie_execs():

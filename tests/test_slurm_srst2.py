@@ -15,7 +15,7 @@ import slurm_srst2
 
 class TestSamtoolExec(unittest.TestCase):
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -32,7 +32,7 @@ class TestSamtoolExec(unittest.TestCase):
         run_mock.assert_called_once_with(["/usr/bin/samtools", "faidx", "foo"])
 
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -48,7 +48,7 @@ class TestSamtoolExec(unittest.TestCase):
         run_mock.assert_called_once_with(["samtools", "faidx", "foo"])
 
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -67,7 +67,7 @@ class TestSamtoolExec(unittest.TestCase):
 
 class TestBowtieIndex(unittest.TestCase):
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -90,7 +90,7 @@ class TestBowtieIndex(unittest.TestCase):
         run_mock.assert_called_once_with(["/usr/bin/bowtie2-build", "foo", "foo"])
 
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -110,7 +110,7 @@ class TestBowtieIndex(unittest.TestCase):
         run_mock.assert_called_once_with(["/usr/bin/bowtie2-build", "foo", "foo"])
 
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -128,7 +128,7 @@ class TestBowtieIndex(unittest.TestCase):
         run_mock.assert_called_once_with(["/usr/bin/bowtie2-build", "foo", "foo"])
 
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -144,7 +144,7 @@ class TestBowtieIndex(unittest.TestCase):
         run_mock.assert_called_once_with(["bowtie2-build", "foo", "foo"])
 
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -161,7 +161,7 @@ class TestBowtieIndex(unittest.TestCase):
         run_mock.assert_called_once_with(["bowtie2-build", "foo", "foo"])
 
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -182,7 +182,7 @@ class TestBowtieIndex(unittest.TestCase):
         run_mock.assert_called_once_with(["/usr/bin/bowtie2-build", "foo", "foo"])
 
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")
@@ -205,7 +205,7 @@ class TestBowtieIndex(unittest.TestCase):
         run_mock.assert_called_once_with(["/usr/bin/bowtie2-build", "foo", "foo"])
 
     @patch("slurm_srst2.sys.stdout")
-    @patch("slurm_srst2.check_command_versions")
+    @patch("slurm_srst2.require_min_version")
     @patch("slurm_srst2.run_command")
     @patch("slurm_srst2.os.path")
     @patch("slurm_srst2.os.environ")

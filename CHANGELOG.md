@@ -22,6 +22,14 @@ for continued use.
 
 ### Changed
 
+- Tool-version gates are now **minimum-version checks** rather than hardcoded
+  exact-match lists. `check_bowtie_version`/`check_samtools_version` parse the
+  reported version and require it to be at or above a floor
+  (`BOWTIE2_MIN_VERSION = 2.4.0`, `SAMTOOLS_MIN_VERSION = 1.9`; tested against
+  bowtie2 2.5.4 / samtools 1.22.1), accepting any newer release. This
+  supersedes the earlier exact-list extension ([#24]) and also fixes a latent
+  string-ordering bug (`"1.2"` substring-matched `"1.24"`). Applied in
+  `srst2.py`, `slurm_srst2.py`, and `qsub_srst2.py`. ([#28])
 - Version is now resolved with `importlib.metadata.version("srst2")` instead of
   `pkg_resources.require(...)`, removing the runtime dependency on
   `setuptools`/`pkg_resources`. When the package metadata is unavailable (an
@@ -98,3 +106,4 @@ for continued use.
 [#20]: https://github.com/amd-ph-core/srst2/issues/20
 [#24]: https://github.com/amd-ph-core/srst2/issues/24
 [#26]: https://github.com/amd-ph-core/srst2/issues/26
+[#28]: https://github.com/amd-ph-core/srst2/issues/28
