@@ -596,13 +596,19 @@ def read_pileup_data(pileup_file, size, prob_err, consensus_file=""):
                         i += 2
                         continue
 
-                    if aligned_bases[i] == "+":
-                        i += int(aligned_bases[i + 1]) + 2  # skip to next read
-                        ins_readcount += 1
-                        continue
-
-                    if aligned_bases[i] == "-":
-                        i += int(aligned_bases[i + 1]) + 2  # skip to next read
+                    if aligned_bases[i] == "+" or aligned_bases[i] == "-":
+                        # mpileup indel: +/- followed by a length (one or more
+                        # digits) then that many inserted/deleted bases. Consume
+                        # ALL the digits so multi-digit lengths (e.g. +12ACGT...)
+                        # are skipped correctly; reading only the first digit
+                        # mis-advances and parses the indel bases as SNPs.
+                        is_insertion = aligned_bases[i] == "+"
+                        j = i + 1
+                        while j < len(aligned_bases) and aligned_bases[j].isdigit():
+                            j += 1
+                        i = j + int(aligned_bases[i + 1 : j])
+                        if is_insertion:
+                            ins_readcount += 1
                         continue
 
                     if aligned_bases[i] == "*":
