@@ -13,6 +13,9 @@ for continued use.
 
 ### Added
 
+- `--label` option to set the sample name used in the output explicitly,
+  instead of inferring it from the read file name(s). Only valid for a single
+  read set (errors clearly otherwise). ([#62], [katholt#109])
 - Brought the bundled `data/` databases up to upstream `73f885f` (the baseline
   the earlier production builds ran; see [#52]): added `ARGannot_r2.fasta` /
   `ARGannot_r3.fasta` (+ their clustered CSVs and the r2 change log) and
@@ -242,6 +245,7 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#52]: https://github.com/amd-ph-core/srst2/issues/52
 [#55]: https://github.com/amd-ph-core/srst2/issues/55
 [#60]: https://github.com/amd-ph-core/srst2/issues/60
+[#62]: https://github.com/amd-ph-core/srst2/issues/62
 [katholt#99]: https://github.com/katholt/srst2/issues/99
 [katholt#113]: https://github.com/katholt/srst2/issues/113
 [katholt#143]: https://github.com/katholt/srst2/issues/143
