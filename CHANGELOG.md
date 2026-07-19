@@ -39,6 +39,12 @@ for continued use.
 
 ### Fixed
 
+- Removed the `-L 1000` flag from the `samtools mpileup` call. `-L` was removed
+  from `samtools mpileup` in samtools 1.9 (it belonged to the BCF/VCF calling
+  path that moved to `bcftools`), so on any modern samtools the pileup step
+  errored with `invalid option -- 'L'` and produced no output. srst2 consumes
+  only the text pileup, so the flag was never needed. Verified end-to-end
+  against samtools 1.22.1 (the container's version) and 1.24. ([#26])
 - Tool-version gates now accept the tool versions the production container
   ships: bowtie2 `2.3`–`2.6` (was capped at `2.2.9`) and samtools `1.0`–`1.29`
   (was capped at `1.3`). With the old lists, `check_bowtie_version` /
@@ -91,3 +97,4 @@ for continued use.
 [#11]: https://github.com/amd-ph-core/srst2/issues/11
 [#20]: https://github.com/amd-ph-core/srst2/issues/20
 [#24]: https://github.com/amd-ph-core/srst2/issues/24
+[#26]: https://github.com/amd-ph-core/srst2/issues/26

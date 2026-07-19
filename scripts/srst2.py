@@ -1133,11 +1133,14 @@ def get_pileup(
 
     logging.info("Generate pileup...")
     with open(pileup_file, "w") as sam_pileup:
+        # Note: the old "-L 1000" flag (max per-sample depth for indel calling)
+        # was removed from `samtools mpileup` in samtools 1.9 along with the
+        # BCF/VCF calling machinery. srst2 consumes only the text pileup and
+        # does its own base-counting, so the flag is unnecessary; passing it to
+        # a modern samtools makes mpileup exit with "invalid option -- 'L'".
         mpileup_command = [
             samtools_exec,
             "mpileup",
-            "-L",
-            "1000",
             "-f",
             fasta,
             "-Q",
