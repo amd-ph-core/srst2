@@ -11,6 +11,18 @@ for continued use.
 
 ## [Unreleased]
 
+### Fixed
+
+- Modernized the `database_clustering/` helper scripts for Python 3 and current
+  Biopython, with no behavior or CLI changes: dropped the removed `Bio.Alphabet`
+  import from `VFDBgenus.py` and `csv_to_gene_db.py`; removed the alphabet
+  argument from `Seq(...)` (removed in modern Biopython); replaced the removed
+  `Bio.Align.Applications.MuscleCommandline` in `align_plot_tree_min3.py` with a
+  direct command construction (execution stays disabled, as before); raw-stringed
+  the invalid-escape regexes; removed dead imports; and defined the previously
+  undefined `DoError` helper in `csv_to_gene_db.py` so its argument-validation
+  paths exit cleanly instead of raising `NameError`. ([#39])
+
 ## [0.3.0] - 2026-07-18
 
 The first working, modernized Python 3 release. SRST2 v0.2.0 (the last upstream
@@ -124,3 +136,4 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#30]: https://github.com/amd-ph-core/srst2/issues/30
 [#32]: https://github.com/amd-ph-core/srst2/issues/32
 [#34]: https://github.com/amd-ph-core/srst2/issues/34
+[#39]: https://github.com/amd-ph-core/srst2/issues/39

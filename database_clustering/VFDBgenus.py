@@ -2,14 +2,11 @@
 Extract virulence genes by genus from the VFDB database at http://www.mgc.ac.cn/VFs/Down/CP_VFs.ffn.gz
 """
 
-import sys, re
+import sys
 from argparse import ArgumentParser
 
-# BioPython modules for reading and writing sequences
+# BioPython, for reading and writing sequences (only SeqIO is used).
 from Bio import SeqIO
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
-from Bio.Alphabet import IUPAC
 
 
 def parse_args():
