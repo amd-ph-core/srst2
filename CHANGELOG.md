@@ -11,6 +11,17 @@ for continued use.
 
 ## [Unreleased]
 
+### Added
+
+- Brought the bundled `data/` databases up to upstream `73f885f` (the baseline
+  the earlier production builds ran; see [#52]): added `ARGannot_r2.fasta` /
+  `ARGannot_r3.fasta` (+ their clustered CSVs and the r2 change log) and
+  `CARD_v3.0.8_SRST2.fasta` (+ clustered CSV), and updated `EcOH.fasta`,
+  `ARGannot_clustered80.csv`, and `data/README.md`. These are reference
+  databases only; the PHoeNIx pipeline supplies srst2 an external `--gene_db`
+  (`ResGANNCBI_..._srst2.fasta`) / `--mlst_db`, so it never uses these bundled
+  files — updating them does not change pipeline behavior. ([#52])
+
 ### Changed
 
 - All alleles tied at the best score are now reported per gene/cluster, instead
