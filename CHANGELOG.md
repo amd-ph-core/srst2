@@ -11,8 +11,19 @@ for continued use.
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-07-19
+
+Release candidate for v1.0.0. Bundles the Round-2 correctness fixes and
+maintenance work on top of the v0.3.x modernized baseline. Several entries are
+**behavioral** (they change typing results) and are gated on re-validation
+against the PHoeNIx reference dataset before a final v1.0.0 / production cut —
+this RC exists precisely so that validation can run against a tagged build.
+
 ### Added
 
+- `--label` option to set the sample name used in the output explicitly,
+  instead of inferring it from the read file name(s). Only valid for a single
+  read set (errors clearly otherwise). ([#62], [katholt#109])
 - Brought the bundled `data/` databases up to upstream `73f885f` (the baseline
   the earlier production builds ran; see [#52]): added `ARGannot_r2.fasta` /
   `ARGannot_r3.fasta` (+ their clustered CSVs and the r2 change log) and
@@ -39,6 +50,13 @@ for continued use.
   against the PHoeNIx reference dataset before production. ([#46])
 
 ### Fixed
+
+- MLST allele names that do not contain the `--mlst_delimiter` no longer crash
+  the whole run with a cryptic `IndexError`. `get_allele_name_from_db` now
+  raises a clear `CommandError` naming the allele and delimiter, which is caught
+  per sample (the sample is recorded as failed and the run continues) — a
+  common cause of the upstream `list index out of range` reports
+  ([katholt#113]). ([#60])
 
 - Consensus headers now use the actual `sample_name` (threaded through
   `read_pileup_data`/`parse_scores`) instead of parsing it out of the pileup
@@ -207,7 +225,8 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
   allele names containing a dot (e.g. `NG_047667.1`) no longer raise
   `IndexError`. Reproduces the first inline "jvhagey" production patch. ([#5])
 
-[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...dev
+[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v1.0.0-rc.1...dev
+[1.0.0-rc.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...v1.0.0-rc.1
 [0.3.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...v0.3.0
 [#1]: https://github.com/amd-ph-core/srst2/issues/1
@@ -234,5 +253,9 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#50]: https://github.com/amd-ph-core/srst2/issues/50
 [#52]: https://github.com/amd-ph-core/srst2/issues/52
 [#55]: https://github.com/amd-ph-core/srst2/issues/55
+[#60]: https://github.com/amd-ph-core/srst2/issues/60
+[#62]: https://github.com/amd-ph-core/srst2/issues/62
 [katholt#99]: https://github.com/katholt/srst2/issues/99
+[katholt#109]: https://github.com/katholt/srst2/issues/109
+[katholt#113]: https://github.com/katholt/srst2/issues/113
 [katholt#143]: https://github.com/katholt/srst2/issues/143

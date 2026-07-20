@@ -69,6 +69,13 @@ def parse_args():
         help="Switch on if all the input read sets belong to a single sample, and you want to merge their data to get a single result",
     )
     parser.add_argument(
+        "--label",
+        type=str,
+        required=False,
+        default="",
+        help="Sample name to use in the output, instead of inferring it from the read file name(s). Only valid for a single read set.",
+    )
+    parser.add_argument(
         "--forward",
         type=str,
         required=False,
@@ -1341,6 +1348,19 @@ def get_allele_name_from_db(
 
     else:
         gene_name = allele.split(args.mlst_delimiter)
+        if len(gene_name) < 2:
+            # The allele name has no --mlst_delimiter, so the gene/allele-number
+            # split fails. Raise a clear CommandError (caught per sample in
+            # process_fasta_db) instead of a cryptic IndexError that crashes the
+            # whole run (upstream #113).
+            raise CommandError(
+                "MLST allele '{0}' does not contain the --mlst_delimiter '{1}'. "
+                "Check that --mlst_delimiter matches the separator between the "
+                "gene name and allele number in your MLST database "
+                "(e.g. '-' for arcc-1, '_' for arcc_1).".format(
+                    allele, args.mlst_delimiter
+                )
+            )
         allele_name = gene_name[1]
         gene_name = gene_name[0]
         seqid = None
@@ -1638,6 +1658,20 @@ def read_file_sets(args):
         logging.info("Total paired readsets found:" + str(num_paired_readsets))
     if num_single_readsets > 0:
         logging.info("Total single reads found:" + str(num_single_readsets))
+
+    # If the user gave an explicit --label, use it as the sample name instead of
+    # the one inferred from the read file name. Only meaningful for a single read
+    # set, since one label cannot name multiple samples.
+    if getattr(args, "label", ""):
+        if len(fileSets) == 1:
+            fileSets = {args.label: list(fileSets.values())[0]}
+        elif len(fileSets) > 1:
+            logging.error(
+                "--label was given but {} read sets were found; --label can only "
+                "be used with a single read set (or combine reads with "
+                "--merge_paired).".format(len(fileSets))
+            )
+            sys.exit(1)
 
     return fileSets
 
