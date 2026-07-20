@@ -11,6 +11,97 @@ for continued use.
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-07-19
+
+Release candidate for v1.0.0. Bundles the Round-2 correctness fixes and
+maintenance work on top of the v0.3.x modernized baseline. Several entries are
+**behavioral** (they change typing results) and are gated on re-validation
+against the PHoeNIx reference dataset before a final v1.0.0 / production cut —
+this RC exists precisely so that validation can run against a tagged build.
+
+### Added
+
+- `--label` option to set the sample name used in the output explicitly,
+  instead of inferring it from the read file name(s). Only valid for a single
+  read set (errors clearly otherwise). ([#62], [katholt#109])
+- Brought the bundled `data/` databases up to upstream `73f885f` (the baseline
+  the earlier production builds ran; see [#52]): added `ARGannot_r2.fasta` /
+  `ARGannot_r3.fasta` (+ their clustered CSVs and the r2 change log) and
+  `CARD_v3.0.8_SRST2.fasta` (+ clustered CSV), and updated `EcOH.fasta`,
+  `ARGannot_clustered80.csv`, and `data/README.md`. These are reference
+  databases only; the PHoeNIx pipeline supplies srst2 an external `--gene_db`
+  (`ResGANNCBI_..._srst2.fasta`) / `--mlst_db`, so it never uses these bundled
+  files — updating them does not change pipeline behavior. ([#52])
+
+### Changed
+
+- All alleles tied at the best score are now reported per gene/cluster, instead
+  of a single arbitrary winner. Previously only `scores_sorted[0]` was reported,
+  so when alleles tied at the top score the "winner" depended on the iteration
+  order of the score dict (arbitrary, and historically non-deterministic across
+  Python 2 dict orderings) — scientifically indefensible. Alleles are now sorted
+  deterministically (score, then name); every allele tied at the top is
+  reported. Gene detection joins the tied allele names in the summary cell
+  (e.g. `aadA1/aadA2`) and writes one `fullgenes` row per allele; MLST joins the
+  tied allele numbers (e.g. `11/14`) and flags the ST uncertain (`?`), since the
+  locus — and therefore the ST — is ambiguous. The truncation heuristic still
+  applies only to a single, clean, well-covered top allele. Behavioral change;
+  the single-allele case (the overwhelming majority) is unchanged. Re-validate
+  against the PHoeNIx reference dataset before production. ([#46])
+
+### Fixed
+
+- MLST allele names that do not contain the `--mlst_delimiter` no longer crash
+  the whole run with a cryptic `IndexError`. `get_allele_name_from_db` now
+  raises a clear `CommandError` naming the allele and delimiter, which is caught
+  per sample (the sample is recorded as failed and the run continues) — a
+  common cause of the upstream `list index out of range` reports
+  ([katholt#113]). ([#60])
+
+- Consensus headers now use the actual `sample_name` (threaded through
+  `read_pileup_data`/`parse_scores`) instead of parsing it out of the pileup
+  filename. The old positional parse (`pileup_file.split(".")[1].split("__")[1]`)
+  crashed on paths/prefixes containing extra `.`s, reported by CDC and PHAC
+  upstream ([katholt#143], [katholt#99]); the fix that shipped in the bioconda
+  recipe (thread `sample_name`) never reached upstream GitHub. This adopts that
+  root-cause fix, superseding the filename-parse-with-fallback introduced in
+  #5. Behavioral (the consensus header's sample-name field is now the true
+  sample name). ([#55])
+- Adopted upstream fix #69 ("round penalty to integer", commit `9eaedff`) that
+  our `v0.2.0`-based port was missing: the deletion/edge penalties in
+  `read_pileup_data` are now `round(penalty)` rather than the raw float. This
+  matches the later upstream commit (`73f885f`) that the earlier production
+  builds actually ran, which our baseline was behind. Behavioral scoring change;
+  re-validate against the PHoeNIx reference dataset before production. (Note:
+  Python 3's `round()` uses banker's rounding for exact `.5` values, a minor
+  difference from Python 2's round-half-up.) ([#52])
+- `qsub_srst2.py` now uses a `#!/usr/bin/env python3` shebang instead of a
+  hardcoded Python 2.7 interpreter path; `slurm_srst2.py` uses a generic
+  `module load srst2` and only passes `--threads` when >1; and
+  `database_clustering/VFDB_cdhit_to_csv.py` also recognises `gb|` accessions in
+  VFDB headers. (Carried over from upstream `73f885f`.) ([#52])
+- Hardened shell/command construction against spaces and metacharacters in
+  filenames. `getmlst.py` reads the first line of the combined FASTA in pure
+  Python instead of `os.popen("head -n 1 " + filename)`. `slurm_srst2.py`
+  submits the job script through `subprocess` on `sbatch`'s stdin instead of
+  `os.system('echo "..." | sbatch')`, and both `slurm_srst2.py` and
+  `qsub_srst2.py` now `shlex.quote` the fastq paths, run directory, and output
+  prefix embedded in the submitted command. ([#50])
+- The pre-run consensus cleanup now removes the files that are actually written
+  (`${output}.new_consensus_alleles.fasta` and, when `--report_all_consensus`
+  is set, `${output}.all_consensus_alleles.fasta`) instead of a never-written
+  `${output}.consensus_alleles.fasta`. Those files are opened in append mode, so
+  re-running into the same `--output` prefix previously appended duplicate
+  consensus records; re-runs now start clean. ([#48])
+- Multi-digit indel lengths in the pileup are no longer mis-parsed. In
+  `read_pileup_data`, `+`/`-` indels were skipped by reading only the first
+  digit of the length (`int(aligned_bases[i + 1])`), so any indel of 10 bp or
+  more advanced the parser incorrectly and the remaining indel bases were
+  counted as matches/SNPs — mis-counting mismatches and corrupting the
+  consensus. Now consume all consecutive digits after `+`/`-` and skip that
+  many bases. This is a behavioral fix — results change for reads spanning an
+  indel of 10 bp or more. ([#44])
+
 ## [0.3.1] - 2026-07-18
 
 Maintenance release: brings the `database_clustering/` helper scripts up to a
@@ -134,7 +225,8 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
   allele names containing a dot (e.g. `NG_047667.1`) no longer raise
   `IndexError`. Reproduces the first inline "jvhagey" production patch. ([#5])
 
-[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...dev
+[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v1.0.0-rc.1...dev
+[1.0.0-rc.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...v1.0.0-rc.1
 [0.3.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...v0.3.0
 [#1]: https://github.com/amd-ph-core/srst2/issues/1
@@ -155,3 +247,15 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
 [#34]: https://github.com/amd-ph-core/srst2/issues/34
 [#39]: https://github.com/amd-ph-core/srst2/issues/39
 [#41]: https://github.com/amd-ph-core/srst2/issues/41
+[#44]: https://github.com/amd-ph-core/srst2/issues/44
+[#46]: https://github.com/amd-ph-core/srst2/issues/46
+[#48]: https://github.com/amd-ph-core/srst2/issues/48
+[#50]: https://github.com/amd-ph-core/srst2/issues/50
+[#52]: https://github.com/amd-ph-core/srst2/issues/52
+[#55]: https://github.com/amd-ph-core/srst2/issues/55
+[#60]: https://github.com/amd-ph-core/srst2/issues/60
+[#62]: https://github.com/amd-ph-core/srst2/issues/62
+[katholt#99]: https://github.com/katholt/srst2/issues/99
+[katholt#109]: https://github.com/katholt/srst2/issues/109
+[katholt#113]: https://github.com/katholt/srst2/issues/113
+[katholt#143]: https://github.com/katholt/srst2/issues/143

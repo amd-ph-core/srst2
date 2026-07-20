@@ -22,7 +22,7 @@
 from argparse import ArgumentParser, FileType
 import logging
 from subprocess import call, check_output, CalledProcessError, STDOUT
-import os, sys, re, collections, operator
+import os, sys, re, collections
 from scipy.stats import binom, linregress
 from math import log
 from itertools import groupby
@@ -67,6 +67,13 @@ def parse_args():
         action="store_true",
         required=False,
         help="Switch on if all the input read sets belong to a single sample, and you want to merge their data to get a single result",
+    )
+    parser.add_argument(
+        "--label",
+        type=str,
+        required=False,
+        default="",
+        help="Sample name to use in the output, instead of inferring it from the read file name(s). Only valid for a single read set.",
     )
     parser.add_argument(
         "--forward",
@@ -516,7 +523,7 @@ def parse_fai(fai_file, db_type, delimiter):
     )
 
 
-def read_pileup_data(pileup_file, size, prob_err, consensus_file=""):
+def read_pileup_data(pileup_file, size, prob_err, sample_name, consensus_file=""):
     with open(pileup_file) as pileup:
         prob_success = 1 - prob_err  # Set by user, default is prob_err = 0.01
         hash_alignment = {}
@@ -596,13 +603,19 @@ def read_pileup_data(pileup_file, size, prob_err, consensus_file=""):
                         i += 2
                         continue
 
-                    if aligned_bases[i] == "+":
-                        i += int(aligned_bases[i + 1]) + 2  # skip to next read
-                        ins_readcount += 1
-                        continue
-
-                    if aligned_bases[i] == "-":
-                        i += int(aligned_bases[i + 1]) + 2  # skip to next read
+                    if aligned_bases[i] == "+" or aligned_bases[i] == "-":
+                        # mpileup indel: +/- followed by a length (one or more
+                        # digits) then that many inserted/deleted bases. Consume
+                        # ALL the digits so multi-digit lengths (e.g. +12ACGT...)
+                        # are skipped correctly; reading only the first digit
+                        # mis-advances and parses the indel bases as SNPs.
+                        is_insertion = aligned_bases[i] == "+"
+                        j = i + 1
+                        while j < len(aligned_bases) and aligned_bases[j].isdigit():
+                            j += 1
+                        i = j + int(aligned_bases[i + 1 : j])
+                        if is_insertion:
+                            ins_readcount += 1
                         continue
 
                     if aligned_bases[i] == "*":
@@ -661,22 +674,12 @@ def read_pileup_data(pileup_file, size, prob_err, consensus_file=""):
                 elif consensus_file.split(".")[-2] == "all_consensus_alleles":
                     consensus_type = "consensus"
                 with open(consensus_file, "a") as consensus_outfile:
-                    # Extract the sample name from the pileup filename. Splitting
-                    # positionally on "." breaks for allele names that contain a
-                    # dot (e.g. NG_047667.1), so split on the "__" sample
-                    # delimiter and strip the trailing ".<db>.pileup" suffix,
-                    # falling back to the basename if that structure is absent.
-                    try:
-                        pileup_parts = os.path.basename(pileup_file).split("__")
-                        sample_id = (
-                            pileup_parts[1].split(".")[0]
-                            if len(pileup_parts) >= 2
-                            else os.path.basename(pileup_file)
-                        )
-                    except (IndexError, AttributeError):
-                        sample_id = os.path.basename(pileup_file)
+                    # Use the sample name passed in directly rather than parsing it
+                    # out of the pileup filename; the old positional parse
+                    # (pileup_file.split(".")[1].split("__")[1]) crashed on
+                    # paths/prefixes containing extra "." (upstream #99/#143).
                     consensus_outfile.write(
-                        ">{0}.{1} {2}\n".format(allele, consensus_type, sample_id)
+                        ">{0}.{1} {2}\n".format(allele, consensus_type, sample_name)
                     )
                     outstring = consensus_seq + "\n"
                     consensus_outfile.write(outstring)
@@ -692,7 +695,7 @@ def read_pileup_data(pileup_file, size, prob_err, consensus_file=""):
                     / 2
                 )
                 m = min(position_depths[nuc_num - 1], position_depths[nuc_num - 2])
-                hash_alignment[allele].append((0, penalty, prob_success))
+                hash_alignment[allele].append((0, round(penalty), prob_success))
                 if next_to_del_depth > m:
                     next_to_del_depth = (
                         m  # keep track of lowest near-del depth for reporting
@@ -727,7 +730,7 @@ def read_pileup_data(pileup_file, size, prob_err, consensus_file=""):
                     penalty = (
                         float(position_depths[j + 1] + position_depths[j + 2]) / 2
                     )  # mean of next 2 bases
-                    hash_alignment[allele].append((0, penalty, prob_success))
+                    hash_alignment[allele].append((0, round(penalty), prob_success))
                     m = min(position_depths[nuc_num - 1], position_depths[nuc_num - 2])
                     if next_to_del_depth > m:
                         next_to_del_depth = (
@@ -1157,13 +1160,21 @@ def calculate_ST(
 
     # get allele numbers & info
     for gene in gene_names:
+        tie = False
         if gene in allele_scores:
-            (allele, diffs, depth_problem, divergence) = allele_scores[gene]
-            allele_number = allele.split(mlst_delimiter)[-1]
+            calls = allele_scores[gene]  # list of tied top alleles for this locus
+            # The primary (deterministically first) tied allele drives depth/MAF
+            # and the detailed diffs/depth flags; a tie is flagged separately.
+            (allele, diffs, depth_problem, divergence) = calls[0]
+            allele_number = "/".join(
+                a.split(mlst_delimiter)[-1] for (a, _d, _dp, _dv) in calls
+            )
             depths.append(avg_depth_allele[allele])
             mix_rate = mix_rates[allele]
             mafs.append(mix_rate)
+            tie = len(calls) > 1
         else:
+            allele = None
             allele_number = "-"
             diffs = ""
             depth_problem = ""
@@ -1178,6 +1189,13 @@ def calculate_ST(
         if depth_problem != "":
             allele_with_flags += "?"
             uncertainty_flags.append(allele + "/" + depth_problem)
+        if tie:
+            # Two or more alleles tie at the best score for this locus, so the
+            # allele call (and therefore the ST) is ambiguous. Flag it rather
+            # than picking an arbitrary winner.
+            if not allele_with_flags.endswith("?"):
+                allele_with_flags += "?"
+            uncertainty_flags.append(allele_number + "/tie")
         alleles_with_flags.append(allele_with_flags)
 
     # calculate ST (no flags)
@@ -1192,8 +1210,8 @@ def calculate_ST(
             )
             print(sample_name, end=" ")
             for gene in allele_scores:
-                (allele, diffs, depth_problems, divergence) = allele_scores[gene]
-                print(allele, end=" ")
+                for allele, _diffs, _depth_problems, _divergence in allele_scores[gene]:
+                    print(allele, end=" ")
             print()
             clean_st = "NF"
     else:
@@ -1319,6 +1337,19 @@ def get_allele_name_from_db(
 
     else:
         gene_name = allele.split(args.mlst_delimiter)
+        if len(gene_name) < 2:
+            # The allele name has no --mlst_delimiter, so the gene/allele-number
+            # split fails. Raise a clear CommandError (caught per sample in
+            # process_fasta_db) instead of a cryptic IndexError that crashes the
+            # whole run (upstream #113).
+            raise CommandError(
+                "MLST allele '{0}' does not contain the --mlst_delimiter '{1}'. "
+                "Check that --mlst_delimiter matches the separator between the "
+                "gene name and allele number in your MLST database "
+                "(e.g. '-' for arcc-1, '_' for arcc_1).".format(
+                    allele, args.mlst_delimiter
+                )
+            )
         allele_name = gene_name[1]
         gene_name = gene_name[0]
         seqid = None
@@ -1384,6 +1415,7 @@ def parse_scores(
     unique_cluster_symbols,
     unique_allele_symbols,
     pileup_file,
+    sample_name,
 ):
 
     # sort into hash for each gene locus
@@ -1399,110 +1431,119 @@ def parse_scores(
         unique_allele_symbols,
     )
 
-    # determine best allele for each gene locus/cluster
-    results = {}  # key = gene, value = (allele,diffs,depth)
+    # determine best allele(s) for each gene locus/cluster
+    results = {}  # key = gene, value = list of (allele, diffs, depth_problem, divergence)
 
-    for gene in scores_by_gene:
-        gene_hash = scores_by_gene[gene]
-        scores_sorted = sorted(
-            iter(gene_hash.items()), key=operator.itemgetter(1)
-        )  # sort by score
-        (top_allele, top_score) = scores_sorted[0]
-
-        # check if depth is adequate for confident call
+    def evaluate_allele(allele):
+        """Assess a single allele from the already-computed per-allele hashes,
+        returning (differences, depth_problem, divergence, adequate_depth)."""
         adequate_depth = False
         depth_problem = ""
         if (
-            hash_edge_depth[top_allele][0] > args.min_edge_depth
-            and hash_edge_depth[top_allele][1] > args.min_edge_depth
+            hash_edge_depth[allele][0] > args.min_edge_depth
+            and hash_edge_depth[allele][1] > args.min_edge_depth
         ):
-            if next_to_del_depth_allele[top_allele] != "NA":
-                if float(next_to_del_depth_allele[top_allele]) > args.min_edge_depth:
-                    if avg_depth_allele[top_allele] > args.min_depth:
+            if next_to_del_depth_allele[allele] != "NA":
+                if float(next_to_del_depth_allele[allele]) > args.min_edge_depth:
+                    if avg_depth_allele[allele] > args.min_depth:
                         adequate_depth = True
                     else:
-                        depth_problem = "depth" + str(avg_depth_allele[top_allele])
+                        depth_problem = "depth" + str(avg_depth_allele[allele])
                 else:
-                    depth_problem = "del" + str(next_to_del_depth_allele[top_allele])
-            elif avg_depth_allele[top_allele] > args.min_depth:
+                    depth_problem = "del" + str(next_to_del_depth_allele[allele])
+            elif avg_depth_allele[allele] > args.min_depth:
                 adequate_depth = True
             else:
-                depth_problem = "depth" + str(avg_depth_allele[top_allele])
+                depth_problem = "depth" + str(avg_depth_allele[allele])
         else:
             depth_problem = "edge" + str(
-                min(hash_edge_depth[top_allele][0], hash_edge_depth[top_allele][1])
+                min(hash_edge_depth[allele][0], hash_edge_depth[allele][1])
             )
 
-        # check if there are confident differences against this allele
         differences = ""
-        if mismatch_allele[top_allele] > 0:
-            differences += str(mismatch_allele[top_allele]) + "snp"
-        if indel_allele[top_allele] > 0:
-            differences += str(indel_allele[top_allele]) + "indel"
-        if missing_allele[top_allele] > 0:
-            differences += str(missing_allele[top_allele]) + "holes"
+        if mismatch_allele[allele] > 0:
+            differences += str(mismatch_allele[allele]) + "snp"
+        if indel_allele[allele] > 0:
+            differences += str(indel_allele[allele]) + "indel"
+        if missing_allele[allele] > 0:
+            differences += str(missing_allele[allele]) + "holes"
 
-        divergence = float(mismatch_allele[top_allele]) / float(
-            size_allele[top_allele] - missing_allele[top_allele]
+        divergence = float(mismatch_allele[allele]) / float(
+            size_allele[allele] - missing_allele[allele]
         )
+        return differences, depth_problem, divergence, adequate_depth
 
-        # check for truncated
-        if differences != "" or not adequate_depth:
-            # if there are SNPs or not enough depth to trust the result, no need to screen next best match
-            results[gene] = (top_allele, differences, depth_problem, divergence)
-        else:
-            # looks good but this could be a truncated version of the real allele; check for longer versions
-            truncation_override = False
-            if len(scores_sorted) > 1:
-                (next_best_allele, next_best_score) = scores_sorted[1]
-                if size_allele[next_best_allele] > size_allele[top_allele]:
-                    # next best is longer, top allele could be a truncation?
+    for gene in scores_by_gene:
+        gene_hash = scores_by_gene[gene]
+        # Sort by score, then by allele name, so equally-scoring alleles are
+        # ordered deterministically instead of by dict iteration order (Python 2
+        # reported whichever happened to sort first, an arbitrary winner).
+        scores_sorted = sorted(gene_hash.items(), key=lambda kv: (kv[1], kv[0]))
+        top_score = scores_sorted[0][1]
+        # Every allele tied at the best score. Previously only scores_sorted[0]
+        # was reported, silently dropping the rest; report them all.
+        top_alleles = [
+            allele for (allele, score) in scores_sorted if score == top_score
+        ]
+
+        gene_calls = []  # list of (allele, diffs, depth_problem, divergence)
+        for top_allele in top_alleles:
+            differences, depth_problem, divergence, adequate_depth = evaluate_allele(
+                top_allele
+            )
+
+            if len(top_alleles) == 1 and differences == "" and adequate_depth:
+                # A single, clean, well-covered top allele: it could be a
+                # truncated form of a longer allele. Only in this unambiguous
+                # case do we break toward a longer, equally-clean allele whose
+                # score is within tolerance (the existing truncation heuristic).
+                chosen_allele, chosen_diffs = top_allele, ""
+                if len(scores_sorted) > 1:
+                    (next_best_allele, next_best_score) = scores_sorted[1]
                     if (
-                        mismatch_allele[next_best_allele]
-                        + indel_allele[next_best_allele]
-                        + missing_allele[next_best_allele]
-                    ) == 0:
-                        # next best also has no mismatches
-                        if (
-                            next_best_score - top_score
-                        ) / top_score < args.truncation_score_tolerance:
-                            # next best has score within 10% of this one
-                            truncation_override = True
-            if truncation_override:
-                results[gene] = (
-                    next_best_allele,
-                    "trun",
-                    "",
-                    divergence,
-                )  # no diffs but report this call is based on truncation test
-                final_allele_reported = next_best_allele
+                        size_allele[next_best_allele] > size_allele[top_allele]
+                        and (
+                            mismatch_allele[next_best_allele]
+                            + indel_allele[next_best_allele]
+                            + missing_allele[next_best_allele]
+                        )
+                        == 0
+                        and (next_best_score - top_score) / top_score
+                        < args.truncation_score_tolerance
+                    ):
+                        chosen_allele, chosen_diffs = next_best_allele, "trun"
+                gene_calls.append((chosen_allele, chosen_diffs, "", divergence))
             else:
-                results[gene] = (top_allele, "", "", divergence)  # no caveats to report
+                gene_calls.append((top_allele, differences, depth_problem, divergence))
 
-        # Check if there are any potential new alleles
-        if depth_problem == "" and divergence > 0:
-            new_allele = True
-            # Get the consensus for this new allele and write it to file
-            if args.report_new_consensus or args.report_all_consensus:
-                new_alleles_filename = args.output + ".new_consensus_alleles.fasta"
-                allele_pileup_file = create_allele_pileup(results[gene][0], pileup_file)
+        results[gene] = gene_calls
+
+        # Write consensus sequences for each reported allele, if requested.
+        for allele, differences, depth_problem, divergence in gene_calls:
+            if depth_problem == "" and divergence > 0:
+                # potential new allele: write its consensus if requested
+                if args.report_new_consensus or args.report_all_consensus:
+                    new_alleles_filename = args.output + ".new_consensus_alleles.fasta"
+                    allele_pileup_file = create_allele_pileup(allele, pileup_file)
+                    read_pileup_data(
+                        allele_pileup_file,
+                        size_allele,
+                        args.prob_err,
+                        sample_name,
+                        consensus_file=new_alleles_filename,
+                    )
+            if args.report_all_consensus:
+                new_alleles_filename = args.output + ".all_consensus_alleles.fasta"
+                allele_pileup_file = create_allele_pileup(allele, pileup_file)
                 read_pileup_data(
                     allele_pileup_file,
                     size_allele,
                     args.prob_err,
+                    sample_name,
                     consensus_file=new_alleles_filename,
                 )
-        if args.report_all_consensus:
-            new_alleles_filename = args.output + ".all_consensus_alleles.fasta"
-            allele_pileup_file = create_allele_pileup(results[gene][0], pileup_file)
-            read_pileup_data(
-                allele_pileup_file,
-                size_allele,
-                args.prob_err,
-                consensus_file=new_alleles_filename,
-            )
 
-    return results  # (allele, diffs, depth_problem, divergence)
+    return results  # per gene: list of (allele, diffs, depth_problem, divergence)
 
 
 def get_readFile_components(full_file_path):
@@ -1606,6 +1647,20 @@ def read_file_sets(args):
         logging.info("Total paired readsets found:" + str(num_paired_readsets))
     if num_single_readsets > 0:
         logging.info("Total single reads found:" + str(num_single_readsets))
+
+    # If the user gave an explicit --label, use it as the sample name instead of
+    # the one inferred from the read file name. Only meaningful for a single read
+    # set, since one label cannot name multiple samples.
+    if getattr(args, "label", ""):
+        if len(fileSets) == 1:
+            fileSets = {args.label: list(fileSets.values())[0]}
+        elif len(fileSets) > 1:
+            logging.error(
+                "--label was given but {} read sets were found; --label can only "
+                "be used with a single read set (or combine reads with "
+                "--merge_paired).".format(len(fileSets))
+            )
+            sys.exit(1)
 
     return fileSets
 
@@ -2033,7 +2088,7 @@ def map_fileSet_to_db(
             missing_allele,
             size_allele,
             next_to_del_depth_allele,
-        ) = read_pileup_data(pileup_file, size, args.prob_err)
+        ) = read_pileup_data(pileup_file, size, args.prob_err, sample_name)
 
         # Generate scores for all alleles (prints these and associated info if verbose)
         #   result = dict, with key=allele, value=score
@@ -2077,6 +2132,7 @@ def map_fileSet_to_db(
         unique_gene_symbols,
         unique_allele_symbols,
         pileup_file,
+        sample_name,
     )
 
     # REPORT/RECORD RESULTS
@@ -2184,65 +2240,83 @@ def map_fileSet_to_db(
                     + "\n"
                 )
         for gene in allele_scores:
-            (allele, diffs, depth_problem, divergence) = allele_scores[
-                gene
-            ]  # gene = top scoring alleles for each cluster
-            gene_name, allele_name, cluster_id, seqid = get_allele_name_from_db(
-                allele, run_type, args, unique_allele_symbols, unique_gene_symbols
-            )
+            # allele_scores[gene] is the list of alleles tied at the top score
+            # for this cluster. Report them all: join their names into the
+            # summary cell, and write one detailed fullgenes row per allele.
+            reported_names = []
+            cell_has_diffs = False
+            cell_has_depth_problem = False
+            cell_cluster_id = None
+            for allele, diffs, depth_problem, divergence in allele_scores[gene]:
+                gene_name, allele_name, cluster_id, seqid = get_allele_name_from_db(
+                    allele, run_type, args, unique_allele_symbols, unique_gene_symbols
+                )
 
-            # store for gene result table only if divergence passes minimum threshold:
-            if divergence * 100 <= float(args.max_divergence):
-                column_header = cluster_symbols[cluster_id]
-                results[sample_name][column_header] = allele_name
-                if diffs != "":
-                    results[sample_name][column_header] += "*"
-                if depth_problem != "":
-                    results[sample_name][column_header] += "?"
+                # store for gene result table only if divergence passes minimum threshold:
+                if divergence * 100 <= float(args.max_divergence):
+                    reported_names.append(allele_name)
+                    if diffs != "":
+                        cell_has_diffs = True
+                    if depth_problem != "":
+                        cell_has_depth_problem = True
+                    cell_cluster_id = cluster_id
+
+                # write details to full genes report (one row per tied allele)
+                if args.no_gene_details:
+                    # get annotation info by scanning the FASTA in-process instead
+                    # of shelling out to `grep`. The old `grep <allele> <fasta>`
+                    # treated the allele name as a regex, so names with shell/regex
+                    # metacharacters (e.g. gene names with parentheses like
+                    # aph(3')-Ia) matched wrongly or not at all.
+                    annotation = ""
+                    try:
+                        with open(fasta) as fasta_fh:
+                            for line in fasta_fh:
+                                if allele in line:
+                                    header = line.rstrip().split()
+                                    header.pop(0)  # remove allele name
+                                    if len(header) > 0:
+                                        annotation = " ".join(
+                                            header
+                                        )  # put back the spaces
+                                    break
+                    except Exception:
+                        annotation = ""
+
+                    f.write(
+                        "\t".join(
+                            [
+                                sample_name,
+                                db_name,
+                                gene_name,
+                                allele_name,
+                                str(round(coverage_allele[allele], 3)),
+                                str(avg_depth_allele[allele]),
+                                diffs,
+                                depth_problem,
+                                str(round(divergence * 100, 3)),
+                                str(size_allele[allele]),
+                                str(round(mix_rates[allele], 3)),
+                                cluster_id,
+                                seqid,
+                                annotation,
+                            ]
+                        )
+                        + "\n"
+                    )
+
+            # one summary cell per cluster: all tied alleles that passed the
+            # divergence threshold, joined with "/".
+            if reported_names:
+                column_header = cluster_symbols[cell_cluster_id]
+                cell = "/".join(reported_names)
+                if cell_has_diffs:
+                    cell += "*"
+                if cell_has_depth_problem:
+                    cell += "?"
+                results[sample_name][column_header] = cell
                 if column_header not in gene_list:
                     gene_list.append(column_header)
-
-            # write details to full genes report
-            if args.no_gene_details:
-                # get annotation info by scanning the FASTA in-process instead
-                # of shelling out to `grep`. The old `grep <allele> <fasta>`
-                # treated the allele name as a regex, so names with shell/regex
-                # metacharacters (e.g. gene names with parentheses like
-                # aph(3')-Ia) matched wrongly or not at all.
-                annotation = ""
-                try:
-                    with open(fasta) as fasta_fh:
-                        for line in fasta_fh:
-                            if allele in line:
-                                header = line.rstrip().split()
-                                header.pop(0)  # remove allele name
-                                if len(header) > 0:
-                                    annotation = " ".join(header)  # put back the spaces
-                                break
-                except Exception:
-                    annotation = ""
-
-                f.write(
-                    "\t".join(
-                        [
-                            sample_name,
-                            db_name,
-                            gene_name,
-                            allele_name,
-                            str(round(coverage_allele[allele], 3)),
-                            str(avg_depth_allele[allele]),
-                            diffs,
-                            depth_problem,
-                            str(round(divergence * 100, 3)),
-                            str(size_allele[allele]),
-                            str(round(mix_rates[allele], 3)),
-                            cluster_id,
-                            seqid,
-                            annotation,
-                        ]
-                    )
-                    + "\n"
-                )
 
         # log the gene detection result
         logging.info(
@@ -2429,11 +2503,18 @@ def main():
     logging.info("program started")
     logging.info("command line: {0}".format(" ".join(sys.argv)))
 
-    # Delete consensus file if it already exists (so can use append file in functions)
+    # Delete any pre-existing consensus files up front, so the append-mode writes
+    # in read_pileup_data start clean rather than appending to a previous run's
+    # output. These are the filenames actually written (see parse_scores); the
+    # old code removed a ".consensus_alleles.fasta" that is never written, so
+    # re-running into the same --output prefix duplicated consensus records.
     if args.report_new_consensus or args.report_all_consensus:
-        new_alleles_filename = args.output + ".consensus_alleles.fasta"
-        if os.path.exists(new_alleles_filename):
-            os.remove(new_alleles_filename)
+        stale_consensus_files = [args.output + ".new_consensus_alleles.fasta"]
+        if args.report_all_consensus:
+            stale_consensus_files.append(args.output + ".all_consensus_alleles.fasta")
+        for stale_consensus_file in stale_consensus_files:
+            if os.path.exists(stale_consensus_file):
+                os.remove(stale_consensus_file)
 
     # vars to store results
     mlst_results_hashes = []  # dict (sample->MLST result string) for each MLST output files created/read

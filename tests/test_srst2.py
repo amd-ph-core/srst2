@@ -2,6 +2,7 @@
 
 import os
 import sys
+import tempfile
 import unittest
 
 from unittest.mock import MagicMock, patch
@@ -415,6 +416,165 @@ class TestSamtoolsIndex(unittest.TestCase):
         self.assertEqual(version_mock.call_args_list[0][0][0], ["samtools"])
         expected_samtools_command = ["samtools", "faidx", "fasta"]
         run_mock.assert_called_once_with(expected_samtools_command)
+
+
+class TestReadPileupData(unittest.TestCase):
+    def test_multidigit_indel_not_miscounted(self):
+        # Regression test for issue #44: an mpileup indel length can be multiple
+        # digits (e.g. +12ACGT...). The parser must consume ALL digits after
+        # +/- and skip that many bases; otherwise the inserted bases are
+        # mis-counted as SNPs and corrupt the consensus.
+        #
+        # Position 2 (ref C) has one read matching the reference plus a 12 bp
+        # insertion (.+12GGGGGGGGGGGG). The consensus base there must stay the
+        # reference C. The old single-digit parse read int("1"), advanced 3, and
+        # counted the twelve Gs as SNPs, flipping the consensus base to G
+        # (consensus "AGG" instead of "ACG").
+        pileup_lines = [
+            "testallele\t1\tA\t1\t.\tI",
+            "testallele\t2\tC\t1\t.+12GGGGGGGGGGGG\tI",
+            "testallele\t3\tG\t1\t.\tI",
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            pileup_path = os.path.join(tmp, "test__sampleX.testdb.pileup")
+            with open(pileup_path, "w") as fh:
+                fh.write("\n".join(pileup_lines) + "\n")
+            consensus_path = os.path.join(tmp, "out.all_consensus_alleles.fasta")
+
+            srst2.read_pileup_data(
+                pileup_path,
+                {"testallele": 3},
+                0.01,
+                "sampleX",
+                consensus_file=consensus_path,
+            )
+
+            with open(consensus_path) as fh:
+                lines = fh.read().splitlines()
+
+        # lines[0] is the FASTA header, lines[1] the consensus sequence.
+        self.assertEqual(lines[1], "ACG")
+
+
+class TestParseScoresTies(unittest.TestCase):
+    # Regression tests for issue #46: all alleles tied at the top score must be
+    # reported (deterministically), not a single arbitrary winner decided by
+    # dict iteration order.
+    def _args(self, **overrides):
+        import types
+
+        defaults = dict(
+            min_coverage=90,
+            min_edge_depth=2,
+            min_depth=5,
+            mlst_delimiter="-",
+            max_divergence=10,
+            truncation_score_tolerance=0.1,
+            report_new_consensus=False,
+            report_all_consensus=False,
+            prob_err=0.01,
+            output="out",
+        )
+        defaults.update(overrides)
+        return types.SimpleNamespace(**defaults)
+
+    def _hashes(self, alleles, size=100, depth=50):
+        return dict(
+            hash_edge_depth={a: (depth, depth) for a in alleles},
+            avg_depth_allele={a: depth for a in alleles},
+            coverage_allele={a: 100.0 for a in alleles},
+            mismatch_allele={a: 0 for a in alleles},
+            indel_allele={a: 0 for a in alleles},
+            missing_allele={a: 0 for a in alleles},
+            size_allele={a: size for a in alleles},
+            next_to_del_depth_allele={a: "NA" for a in alleles},
+        )
+
+    def _run(self, scores):
+        alleles = list(scores)
+        h = self._hashes(alleles)
+        return srst2.parse_scores(
+            "genes",
+            self._args(),
+            scores,
+            h["hash_edge_depth"],
+            h["avg_depth_allele"],
+            h["coverage_allele"],
+            h["mismatch_allele"],
+            h["indel_allele"],
+            h["missing_allele"],
+            h["size_allele"],
+            h["next_to_del_depth_allele"],
+            True,  # unique_cluster_symbols
+            True,  # unique_allele_symbols
+            "",  # pileup_file (consensus reporting off)
+            "sample",  # sample_name
+        )
+
+    def test_all_tied_top_alleles_reported(self):
+        # Two alleles in the same cluster (500) with identical scores: BOTH must
+        # be reported, ordered deterministically by allele name.
+        a1 = "500__geneT__alleleA__7001"
+        a2 = "500__geneT__alleleB__7002"
+        results = self._run({a2: -10.0, a1: -10.0})  # insertion order reversed
+        self.assertIn("500", results)
+        reported = [call[0] for call in results["500"]]
+        self.assertEqual(reported, [a1, a2])
+
+    def test_single_top_allele_only_one_reported(self):
+        # A clear single winner (smaller score is better) is reported alone.
+        a1 = "500__geneT__alleleA__7001"
+        a2 = "500__geneT__alleleB__7002"
+        results = self._run({a1: -10.0, a2: -5.0})
+        reported = [call[0] for call in results["500"]]
+        self.assertEqual(reported, [a1])
+
+
+class TestGetAlleleNameMlstDelimiter(unittest.TestCase):
+    # Regression test for issue #60 (upstream katholt/srst2#113): an MLST allele
+    # without the --mlst_delimiter must raise a clear CommandError, not a cryptic
+    # IndexError that crashes the whole run.
+    def test_missing_delimiter_raises_commanderror(self):
+        import types
+
+        args = types.SimpleNamespace(mlst_delimiter="_")
+        with self.assertRaises(srst2.CommandError):
+            srst2.get_allele_name_from_db("arcC", "mlst", args)
+
+    def test_delimited_allele_still_parses(self):
+        import types
+
+        args = types.SimpleNamespace(mlst_delimiter="_")
+        gene_name, allele_name, cluster_id, seqid = srst2.get_allele_name_from_db(
+            "arcC_5", "mlst", args
+        )
+        self.assertEqual((gene_name, allele_name), ("arcC", "5"))
+
+
+class TestLabelOption(unittest.TestCase):
+    # issue #62 (upstream katholt/srst2#109): --label sets the sample name.
+    def _args(self, input_se, label):
+        import types
+
+        return types.SimpleNamespace(
+            input_se=input_se,
+            input_pe=None,
+            label=label,
+            forward="_1",
+            reverse="_2",
+        )
+
+    def test_label_renames_single_readset(self):
+        fileSets = srst2.read_file_sets(self._args(["sampleA.fastq"], "MYLABEL"))
+        self.assertEqual(fileSets, {"MYLABEL": ["sampleA.fastq"]})
+
+    def test_no_label_infers_from_filename(self):
+        fileSets = srst2.read_file_sets(self._args(["sampleA.fastq"], ""))
+        self.assertEqual(fileSets, {"sampleA": ["sampleA.fastq"]})
+
+    def test_label_with_multiple_readsets_errors(self):
+        with self.assertRaises(SystemExit):
+            srst2.read_file_sets(self._args(["a.fastq", "b.fastq"], "X"))
 
 
 if __name__ == "__main__":
