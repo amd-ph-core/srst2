@@ -1419,11 +1419,18 @@ def parse_scores(
 ):
 
     # sort into hash for each gene locus
+    # PROTOTYPE (#56-adjacent / upstream #140): apply the coverage filter the
+    # same way score_alleles does — bypass it for MLST. Previously score_alleles
+    # scored low-coverage MLST alleles (mlst bypass) but parse_scores then
+    # dropped them here (no bypass), so a mid-gene deletion that lowers coverage
+    # below --min_coverage made the whole locus vanish -> allele "-" -> ST = NF.
+    # NOT MERGED: changes MLST results (low-coverage loci now report a flagged
+    # allele instead of NF); needs the reporter's data + PHoeNIx re-validation.
     scores_by_gene = group_allele_dict_by_gene(
         dict(
             (allele, val)
             for (allele, val) in list(scores.items())
-            if coverage_allele[allele] > args.min_coverage
+            if (run_type == "mlst") or (coverage_allele[allele] > args.min_coverage)
         ),
         run_type,
         args,
