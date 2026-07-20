@@ -11,6 +11,14 @@ for continued use.
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-07-19
+
+Release candidate for v1.0.0. Bundles the Round-2 correctness fixes and
+maintenance work on top of the v0.3.x modernized baseline. Several entries are
+**behavioral** (they change typing results) and are gated on re-validation
+against the PHoeNIx reference dataset before a final v1.0.0 / production cut —
+this RC exists precisely so that validation can run against a tagged build.
+
 ### Added
 
 - `--label` option to set the sample name used in the output explicitly,
@@ -217,7 +225,8 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
   allele names containing a dot (e.g. `NG_047667.1`) no longer raise
   `IndexError`. Reproduces the first inline "jvhagey" production patch. ([#5])
 
-[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...dev
+[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v1.0.0-rc.1...dev
+[1.0.0-rc.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...v1.0.0-rc.1
 [0.3.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...v0.3.0
 [#1]: https://github.com/amd-ph-core/srst2/issues/1

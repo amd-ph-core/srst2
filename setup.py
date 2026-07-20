@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="srst2",
-    version="0.3.1",
+    version="1.0.0rc1",
     author="Kathryn Holt",
     author_email="drkatholt@gmail.com",
     packages=["srst2"],
