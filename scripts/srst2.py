@@ -415,12 +415,30 @@ def get_ref_length_sam(line, ref_lens):
 def modify_bowtie_sam(raw_bowtie_sam, max_mismatch, max_unaligned_overlap):
     # fix sam flags for comprehensive pileup and filter out spurious alignments
     ref_lens = {}
-    with open(raw_bowtie_sam) as sam, open(raw_bowtie_sam + ".mod", "w") as sam_mod:
-        for line in sam:
+    # latin-1 so an unexpected byte anywhere in bowtie2's output cannot abort the
+    # run with an opaque UnicodeDecodeError; the file is rewritten unchanged
+    # apart from the FLAG field, and only ASCII is ever compared.
+    with open(raw_bowtie_sam, encoding="latin-1") as sam, open(
+        raw_bowtie_sam + ".mod", "w", encoding="latin-1"
+    ) as sam_mod:
+        for line_number, line in enumerate(sam, 1):
             if not line.startswith("@"):
                 fields = line.split("\t")
+                reference_name = fields[2].strip() if len(fields) > 2 else ""
+                if reference_name not in ref_lens:
+                    # Every aligned record must name a reference declared in an
+                    # @SQ header line. Indexing ref_lens directly would raise a
+                    # bare KeyError naming only the sequence.
+                    raise CommandError(
+                        "{sam} line {line}: alignment refers to reference "
+                        "{name!r}, which has no @SQ header line. The SAM file is "
+                        "truncated or its header was lost; delete it and re-run "
+                        "so bowtie2 regenerates it.".format(
+                            sam=raw_bowtie_sam, line=line_number, name=reference_name
+                        )
+                    )
                 left_unali, right_unali = get_unaligned_read_end_lengths_sam(
-                    fields, ref_lens[fields[2].strip()]
+                    fields, ref_lens[reference_name]
                 )
                 if (
                     left_unali > max_unaligned_overlap
@@ -523,226 +541,383 @@ def parse_fai(fai_file, db_type, delimiter):
     )
 
 
-def read_pileup_data(pileup_file, size, prob_err, sample_name, consensus_file=""):
-    with open(pileup_file) as pileup:
-        prob_success = 1 - prob_err  # Set by user, default is prob_err = 0.01
-        hash_alignment = {}
-        hash_max_depth = {}
-        hash_edge_depth = {}
-        avg_depth_allele = {}
-        next_to_del_depth_allele = {}
-        coverage_allele = {}
-        mismatch_allele = {}
-        indel_allele = {}
-        missing_allele = {}
-        size_allele = {}
+class PileupFormatError(CommandError):
+    """A line of samtools pileup output could not be trusted.
 
-        # Split all lines in the pileup by whitespace
-        pileup_split = (x.split() for x in pileup)
-        # Group the split lines based on the first field (allele)
-        for allele, lines in groupby(pileup_split, itemgetter(0)):
-            # Reset variables for new allele
-            allele_line = 1  # Keep track of line for this allele
-            exp_nuc_num = 0  # Expected position in ref allele
-            max_depth = 1
-            allele_size = size[allele]
-            total_depth = 0
-            depth_a = depth_z = 0
-            position_depths = (
-                [0] * allele_size
-            )  # store depths in case required for penalties; then we don't need to track total_missing_bases
-            hash_alignment[allele] = []
-            total_missing_bases = 0
-            total_mismatch = 0
-            ins_poscount = 0
-            del_poscount = 0
-            next_to_del_depth = 99999
-            consensus_seq = ""
+    Raised instead of letting a bare ValueError/IndexError/UnicodeDecodeError
+    escape, so the log says which file, which line, and what was wrong with it.
 
-            for fields in lines:
-                # Parse this line and store details required for scoring
-                nuc_num = int(fields[1])  # Actual position in ref allele
-                exp_nuc_num += 1
-                allele_line += 1
-                nuc = fields[2]
-                nuc_depth = int(fields[3])
-                position_depths[nuc_num - 1] = nuc_depth
-                if len(fields) <= 5:
-                    aligned_bases = ""
-                else:
-                    aligned_bases = fields[4]
+    Deliberately a CommandError: run_srst2 already catches those per database,
+    logs them, and records the sample as "failed gene detection" before moving
+    on. That keeps one bad pileup from aborting a whole batch, and it means the
+    run still exits 0 and writes its results files, so a caller that only checks
+    the exit status does not silently lose the sample.
+    """
 
-                # Missing bases (pileup skips basepairs)
-                if nuc_num > exp_nuc_num:
-                    total_missing_bases += abs(exp_nuc_num - nuc_num)
-                exp_nuc_num = nuc_num
-                if nuc_depth == 0:
-                    total_missing_bases += 1
 
-                # Calculate depths for this position
-                if nuc_num <= edge_a:
-                    depth_a += nuc_depth
-                if abs(nuc_num - allele_size) < edge_z:
-                    depth_z += nuc_depth
-                if nuc_depth > max_depth:
-                    hash_max_depth[allele] = nuc_depth
-                    max_depth = nuc_depth
+# Reference-base column values SRST2 will accept: IUPAC nucleotide codes in
+# either case, plus '*' and '-' which samtools uses where it has no base. Any
+# other byte means the column is not a base at all.
+_VALID_REF_BASES = frozenset("ACGTUNRYKMSWBDHVacgtunrykmswbdhv*-")
 
-                total_depth = total_depth + nuc_depth
+# Appended to the error whenever a pileup looks corrupted in the specific way
+# the broken samtools releases corrupt it.
+_SAMTOOLS_MPILEUP_HINT = (
+    "This is the signature of a samtools defect: `mpileup` in 1.23.2 and 1.24 "
+    "frees the reference sequence buffer while it is still writing out the last "
+    "positions of that reference, so the reference-base column contains whatever "
+    "the freed memory now holds. It is intermittent -- the same BAM gives "
+    "different output on consecutive runs -- and it needs a database of many "
+    "short references to appear, which is why SRST2 sees it. Re-run with "
+    "samtools <= 1.23.1, or a build patched for this defect. Note that a run "
+    "which does NOT stop here may still be affected: when the freed memory "
+    "happens to hold an ordinary letter, the wrong reference base is used "
+    "silently and reads matching the reference are scored as mismatches."
+)
 
-                # Parse aligned bases list for this position in the pileup
-                num_match = 0
-                ins_readcount = 0
-                del_readcount = 0
-                nuc_counts = {}
 
-                i = 0
-                while i < len(aligned_bases):
-                    if aligned_bases[i] == "^":
-                        # Signifies start of a read, next char is mapping quality (skip it)
-                        i += 2
-                        continue
-
-                    if aligned_bases[i] == "+" or aligned_bases[i] == "-":
-                        # mpileup indel: +/- followed by a length (one or more
-                        # digits) then that many inserted/deleted bases. Consume
-                        # ALL the digits so multi-digit lengths (e.g. +12ACGT...)
-                        # are skipped correctly; reading only the first digit
-                        # mis-advances and parses the indel bases as SNPs.
-                        is_insertion = aligned_bases[i] == "+"
-                        j = i + 1
-                        while j < len(aligned_bases) and aligned_bases[j].isdigit():
-                            j += 1
-                        i = j + int(aligned_bases[i + 1 : j])
-                        if is_insertion:
-                            ins_readcount += 1
-                        continue
-
-                    if aligned_bases[i] == "*":
-                        i += 1  # skip to next read
-                        del_readcount += 1
-                        continue
-
-                    if aligned_bases[i] == "." or aligned_bases[i] == ",":
-                        num_match += 1
-                        i += 1
-                        continue
-
-                    elif aligned_bases[i].upper() in "ATCG":
-                        this_nuc = aligned_bases[i].upper()
-                        if this_nuc not in nuc_counts:
-                            nuc_counts[this_nuc] = 0
-                        nuc_counts[this_nuc] += 1
-
-                    i += 1
-
-                # Save the most common nucleotide at this position
-                consensus_nuc = nuc  # by default use reference nucleotide
-                max_freq = num_match  # Number of bases matching the reference
-                for nucleotide in nuc_counts:
-                    if nuc_counts[nucleotide] > max_freq:
-                        consensus_nuc = nucleotide
-                        max_freq = nuc_counts[nucleotide]
-                consensus_seq += consensus_nuc
-
-                # Calculate details of this position for scoring and reporting
-
-                # mismatches and indels
-                num_mismatch = nuc_depth - num_match
-                if num_mismatch > num_match:
-                    total_mismatch += (
-                        1  # record as mismatch (could be a snp or deletion)
-                    )
-                if del_readcount > num_match:
-                    del_poscount += 1
-                if ins_readcount > nuc_depth / 2:
-                    ins_poscount += 1
-
-                # Hash for later processing
-                hash_alignment[allele].append(
-                    (num_match, num_mismatch, prob_success)
-                )  # snp or deletion
-                if ins_readcount > 0:
-                    hash_alignment[allele].append(
-                        (nuc_depth - ins_readcount, ins_readcount, prob_success)
-                    )  # penalize for any insertion calls at this position
-
-            # Determine the consensus sequence if required
-            if consensus_file != "":
-                if consensus_file.split(".")[-2] == "new_consensus_alleles":
-                    consensus_type = "variant"
-                elif consensus_file.split(".")[-2] == "all_consensus_alleles":
-                    consensus_type = "consensus"
-                with open(consensus_file, "a") as consensus_outfile:
-                    # Use the sample name passed in directly rather than parsing it
-                    # out of the pileup filename; the old positional parse
-                    # (pileup_file.split(".")[1].split("__")[1]) crashed on
-                    # paths/prefixes containing extra "." (upstream #99/#143).
-                    consensus_outfile.write(
-                        ">{0}.{1} {2}\n".format(allele, consensus_type, sample_name)
-                    )
-                    outstring = consensus_seq + "\n"
-                    consensus_outfile.write(outstring)
-
-            # Finished reading pileup for this allele
-
-            # Check for missing bases at the end of the allele
-            if nuc_num < allele_size:
-                total_missing_bases += abs(allele_size - nuc_num)
-                # determine penalty based on coverage of last 2 bases
-                penalty = (
-                    float(position_depths[nuc_num - 1] + position_depths[nuc_num - 2])
-                    / 2
+def _describe_pileup_line(pileup_file, line_number, raw_line):
+    """Render a pileup line for an error message, with the raw bytes of anything
+    unprintable spelled out so a corrupted column is visible in the log."""
+    shown = []
+    for field in raw_line.rstrip("\n").split("\t"):
+        if all(ch.isprintable() for ch in field):
+            shown.append(field if len(field) <= 60 else field[:57] + "...")
+        else:
+            shown.append(
+                "<non-printable bytes: {}>".format(
+                    " ".join("0x{:02x}".format(ord(ch)) for ch in field[:16])
                 )
-                m = min(position_depths[nuc_num - 1], position_depths[nuc_num - 2])
+            )
+    return "{file} line {line}: {fields}".format(
+        file=pileup_file, line=line_number, fields="\t".join(shown) or "<empty line>"
+    )
+
+
+def parse_pileup_lines(pileup_file):
+    """Yield the whitespace-split fields of each pileup line, checking as we go.
+
+    The file is decoded as latin-1 rather than UTF-8 so that a stray byte cannot
+    raise UnicodeDecodeError before we have a chance to say which line it was on
+    -- every byte maps to exactly one character and SRST2 only ever compares
+    against ASCII, so this does not change parsing of a well-formed pileup.
+    """
+    with open(pileup_file, encoding="latin-1") as pileup:
+        for line_number, raw_line in enumerate(pileup, 1):
+            if not raw_line.strip():
+                continue
+            fields = raw_line.split()
+
+            # A pileup row is name, 1-based position, reference base, depth, and
+            # (when depth > 0) the read bases and their qualities.
+            if len(fields) < 4:
+                raise PileupFormatError(
+                    "Expected at least 4 whitespace-separated columns in the "
+                    "samtools pileup, found {n}. A column that has gone empty "
+                    "shifts every column after it, so the depth column can end "
+                    "up being read as bases.\n  {where}\n{hint}".format(
+                        n=len(fields),
+                        where=_describe_pileup_line(
+                            pileup_file, line_number, raw_line
+                        ),
+                        hint=_SAMTOOLS_MPILEUP_HINT,
+                    )
+                )
+
+            reference_base = fields[2]
+            if len(reference_base) != 1 or reference_base not in _VALID_REF_BASES:
+                raise PileupFormatError(
+                    "Reference-base column is {value!r}, which is not a "
+                    "nucleotide.\n  {where}\n{hint}".format(
+                        value=reference_base,
+                        where=_describe_pileup_line(
+                            pileup_file, line_number, raw_line
+                        ),
+                        hint=_SAMTOOLS_MPILEUP_HINT,
+                    )
+                )
+
+            for index, column_name in ((1, "position"), (3, "depth")):
+                if not fields[index].isdigit():
+                    raise PileupFormatError(
+                        "The {name} column is {value!r}, which is not a "
+                        "number.\n  {where}\n{hint}".format(
+                            name=column_name,
+                            value=fields[index],
+                            where=_describe_pileup_line(
+                                pileup_file, line_number, raw_line
+                            ),
+                            hint=_SAMTOOLS_MPILEUP_HINT,
+                        )
+                    )
+
+            yield fields
+
+
+def read_pileup_data(pileup_file, size, prob_err, sample_name, consensus_file=""):
+    prob_success = 1 - prob_err  # Set by user, default is prob_err = 0.01
+    hash_alignment = {}
+    hash_max_depth = {}
+    hash_edge_depth = {}
+    avg_depth_allele = {}
+    next_to_del_depth_allele = {}
+    coverage_allele = {}
+    mismatch_allele = {}
+    indel_allele = {}
+    missing_allele = {}
+    size_allele = {}
+
+    # Read and check the pileup one line at a time (see parse_pileup_lines),
+    # then group the checked rows on the first field (allele)
+    for allele, lines in groupby(parse_pileup_lines(pileup_file), itemgetter(0)):
+        # Reset variables for new allele
+        allele_line = 1  # Keep track of line for this allele
+        exp_nuc_num = 0  # Expected position in ref allele
+        max_depth = 1
+        if allele not in size:
+            # The pileup names a reference the .fai does not. The two come from
+            # the same FASTA, so they can only disagree if the database changed
+            # under the run or the pileup is not the one we just generated.
+            raise PileupFormatError(
+                "The pileup {file} contains alignments to {allele!r}, which is "
+                "not in the reference index. The FASTA and its .fai are out of "
+                "step -- delete the .fai, .bt2 and .pileup files for this "
+                "database and re-run.".format(file=pileup_file, allele=allele)
+            )
+        allele_size = size[allele]
+        total_depth = 0
+        depth_a = depth_z = 0
+        position_depths = (
+            [0] * allele_size
+        )  # store depths in case required for penalties; then we don't need to track total_missing_bases
+        hash_alignment[allele] = []
+        total_missing_bases = 0
+        total_mismatch = 0
+        ins_poscount = 0
+        del_poscount = 0
+        next_to_del_depth = 99999
+        consensus_seq = ""
+
+        for fields in lines:
+            # Parse this line and store details required for scoring
+            nuc_num = int(fields[1])  # Actual position in ref allele
+            exp_nuc_num += 1
+            allele_line += 1
+            nuc = fields[2]
+            nuc_depth = int(fields[3])
+            if not 1 <= nuc_num <= allele_size:
+                # Position outside the reference. Indexing position_depths with
+                # it would either raise IndexError or, for nuc_num < 1, quietly
+                # wrap around and corrupt a depth at the other end of the array.
+                raise PileupFormatError(
+                    "The pileup places {allele} at position {pos}, but that "
+                    "reference is {size} bases long. The pileup and the "
+                    "reference index disagree; delete the .fai, .bt2 and "
+                    ".pileup files for this database and re-run.".format(
+                        allele=allele, pos=nuc_num, size=allele_size
+                    )
+                )
+            position_depths[nuc_num - 1] = nuc_depth
+            if len(fields) <= 5:
+                aligned_bases = ""
+            else:
+                aligned_bases = fields[4]
+
+            # Missing bases (pileup skips basepairs)
+            if nuc_num > exp_nuc_num:
+                total_missing_bases += abs(exp_nuc_num - nuc_num)
+            exp_nuc_num = nuc_num
+            if nuc_depth == 0:
+                total_missing_bases += 1
+
+            # Calculate depths for this position
+            if nuc_num <= edge_a:
+                depth_a += nuc_depth
+            if abs(nuc_num - allele_size) < edge_z:
+                depth_z += nuc_depth
+            if nuc_depth > max_depth:
+                hash_max_depth[allele] = nuc_depth
+                max_depth = nuc_depth
+
+            total_depth = total_depth + nuc_depth
+
+            # Parse aligned bases list for this position in the pileup
+            num_match = 0
+            ins_readcount = 0
+            del_readcount = 0
+            nuc_counts = {}
+
+            i = 0
+            while i < len(aligned_bases):
+                if aligned_bases[i] == "^":
+                    # Signifies start of a read, next char is mapping quality (skip it)
+                    i += 2
+                    continue
+
+                if aligned_bases[i] == "+" or aligned_bases[i] == "-":
+                    # mpileup indel: +/- followed by a length (one or more
+                    # digits) then that many inserted/deleted bases. Consume
+                    # ALL the digits so multi-digit lengths (e.g. +12ACGT...)
+                    # are skipped correctly; reading only the first digit
+                    # mis-advances and parses the indel bases as SNPs.
+                    is_insertion = aligned_bases[i] == "+"
+                    j = i + 1
+                    while j < len(aligned_bases) and aligned_bases[j].isdigit():
+                        j += 1
+                    if j == i + 1:
+                        # No digits after the +/-, so this is not an indel marker
+                        # and int() would raise on an empty string. Well-formed
+                        # mpileup output cannot produce this.
+                        raise PileupFormatError(
+                            "The read-base column for {allele} at position "
+                            "{pos} has {marker!r} with no indel length after "
+                            "it.\n  read bases: {bases!r}\n{hint}".format(
+                                allele=allele,
+                                pos=nuc_num,
+                                marker=aligned_bases[i],
+                                bases=aligned_bases[:80],
+                                hint=_SAMTOOLS_MPILEUP_HINT,
+                            )
+                        )
+                    i = j + int(aligned_bases[i + 1 : j])
+                    if is_insertion:
+                        ins_readcount += 1
+                    continue
+
+                if aligned_bases[i] == "*":
+                    i += 1  # skip to next read
+                    del_readcount += 1
+                    continue
+
+                if aligned_bases[i] == "." or aligned_bases[i] == ",":
+                    num_match += 1
+                    i += 1
+                    continue
+
+                elif aligned_bases[i].upper() in "ATCG":
+                    this_nuc = aligned_bases[i].upper()
+                    if this_nuc not in nuc_counts:
+                        nuc_counts[this_nuc] = 0
+                    nuc_counts[this_nuc] += 1
+
+                i += 1
+
+            # Save the most common nucleotide at this position
+            consensus_nuc = nuc  # by default use reference nucleotide
+            max_freq = num_match  # Number of bases matching the reference
+            for nucleotide in nuc_counts:
+                if nuc_counts[nucleotide] > max_freq:
+                    consensus_nuc = nucleotide
+                    max_freq = nuc_counts[nucleotide]
+            consensus_seq += consensus_nuc
+
+            # Calculate details of this position for scoring and reporting
+
+            # mismatches and indels
+            num_mismatch = nuc_depth - num_match
+            if num_mismatch > num_match:
+                total_mismatch += (
+                    1  # record as mismatch (could be a snp or deletion)
+                )
+            if del_readcount > num_match:
+                del_poscount += 1
+            if ins_readcount > nuc_depth / 2:
+                ins_poscount += 1
+
+            # Hash for later processing
+            hash_alignment[allele].append(
+                (num_match, num_mismatch, prob_success)
+            )  # snp or deletion
+            if ins_readcount > 0:
+                hash_alignment[allele].append(
+                    (nuc_depth - ins_readcount, ins_readcount, prob_success)
+                )  # penalize for any insertion calls at this position
+
+        # Determine the consensus sequence if required
+        if consensus_file != "":
+            if consensus_file.split(".")[-2] == "new_consensus_alleles":
+                consensus_type = "variant"
+            elif consensus_file.split(".")[-2] == "all_consensus_alleles":
+                consensus_type = "consensus"
+            with open(consensus_file, "a") as consensus_outfile:
+                # Use the sample name passed in directly rather than parsing it
+                # out of the pileup filename; the old positional parse
+                # (pileup_file.split(".")[1].split("__")[1]) crashed on
+                # paths/prefixes containing extra "." (upstream #99/#143).
+                consensus_outfile.write(
+                    ">{0}.{1} {2}\n".format(allele, consensus_type, sample_name)
+                )
+                outstring = consensus_seq + "\n"
+                consensus_outfile.write(outstring)
+
+        # Finished reading pileup for this allele
+
+        # Check for missing bases at the end of the allele
+        if nuc_num < allele_size:
+            total_missing_bases += abs(allele_size - nuc_num)
+            # determine penalty based on coverage of last 2 bases.
+            # Take the last two covered positions without running off the front
+            # of the list: at nuc_num == 1 the index nuc_num - 2 is -1, which
+            # Python resolves to the LAST element of position_depths, silently
+            # mixing a depth from the other end of the allele into the penalty.
+            last_two = position_depths[max(0, nuc_num - 2) : nuc_num]
+            penalty = float(sum(last_two)) / 2
+            m = min(last_two)
+            hash_alignment[allele].append((0, round(penalty), prob_success))
+            if next_to_del_depth > m:
+                next_to_del_depth = (
+                    m  # keep track of lowest near-del depth for reporting
+                )
+
+        # Calculate allele summary stats and save
+        avg_depth = round(total_depth / float(allele_line), 3)
+        avg_a = depth_a / float(
+            edge_a
+        )  # Avg depth at 5' end, num basepairs determined by edge_a
+        avg_z = depth_z / float(edge_z)  # 3'
+        hash_max_depth[allele] = max_depth
+        hash_edge_depth[allele] = (avg_a, avg_z)
+        min_penalty = max(5, int(avg_depth))
+        coverage_allele[allele] = (
+            100
+            * (allele_size - total_missing_bases - del_poscount)
+            / float(allele_size)
+        )  # includes in-read deletions
+        mismatch_allele[allele] = total_mismatch - del_poscount  # snps only
+        indel_allele[allele] = (
+            del_poscount + ins_poscount
+        )  # insertions or deletions
+        missing_allele[allele] = total_missing_bases  # truncated bases
+        size_allele[allele] = allele_size
+
+        # Penalize truncations or large deletions (i.e. positions not covered in pileup)
+        j = 0
+        while j < (len(position_depths) - 2):
+            # note end-of-seq truncations are dealt with above)
+            if position_depths[j] == 0 and position_depths[j + 1] != 0:
+                penalty = (
+                    float(position_depths[j + 1] + position_depths[j + 2]) / 2
+                )  # mean of next 2 bases
                 hash_alignment[allele].append((0, round(penalty), prob_success))
+                # NOTE: this indexes on nuc_num -- the last position of the
+                # whole allele -- rather than on j, the deletion being scored,
+                # so every internal deletion reports the same depth. Inherited
+                # from upstream (katholt/srst2 srst2.py, same expression). Left
+                # as-is deliberately: correcting it changes reported
+                # DepthNeighbouringTruncation values and belongs with the other
+                # scoring changes, which are gated on real-isolate validation.
+                m = min(position_depths[nuc_num - 1], position_depths[nuc_num - 2])
                 if next_to_del_depth > m:
                     next_to_del_depth = (
                         m  # keep track of lowest near-del depth for reporting
                     )
+            j += 1
 
-            # Calculate allele summary stats and save
-            avg_depth = round(total_depth / float(allele_line), 3)
-            avg_a = depth_a / float(
-                edge_a
-            )  # Avg depth at 5' end, num basepairs determined by edge_a
-            avg_z = depth_z / float(edge_z)  # 3'
-            hash_max_depth[allele] = max_depth
-            hash_edge_depth[allele] = (avg_a, avg_z)
-            min_penalty = max(5, int(avg_depth))
-            coverage_allele[allele] = (
-                100
-                * (allele_size - total_missing_bases - del_poscount)
-                / float(allele_size)
-            )  # includes in-read deletions
-            mismatch_allele[allele] = total_mismatch - del_poscount  # snps only
-            indel_allele[allele] = (
-                del_poscount + ins_poscount
-            )  # insertions or deletions
-            missing_allele[allele] = total_missing_bases  # truncated bases
-            size_allele[allele] = allele_size
-
-            # Penalize truncations or large deletions (i.e. positions not covered in pileup)
-            j = 0
-            while j < (len(position_depths) - 2):
-                # note end-of-seq truncations are dealt with above)
-                if position_depths[j] == 0 and position_depths[j + 1] != 0:
-                    penalty = (
-                        float(position_depths[j + 1] + position_depths[j + 2]) / 2
-                    )  # mean of next 2 bases
-                    hash_alignment[allele].append((0, round(penalty), prob_success))
-                    m = min(position_depths[nuc_num - 1], position_depths[nuc_num - 2])
-                    if next_to_del_depth > m:
-                        next_to_del_depth = (
-                            m  # keep track of lowest near-del depth for reporting
-                        )
-                j += 1
-
-            # Store depth info for reporting
-            avg_depth_allele[allele] = avg_depth
-            if next_to_del_depth == 99999:
-                next_to_del_depth = "NA"
-            next_to_del_depth_allele[allele] = next_to_del_depth
+        # Store depth info for reporting
+        avg_depth_allele[allele] = avg_depth
+        if next_to_del_depth == 99999:
+            next_to_del_depth = "NA"
+        next_to_del_depth_allele[allele] = next_to_del_depth
 
     return (
         hash_alignment,
@@ -904,6 +1079,23 @@ def score_alleles(
 BOWTIE2_MIN_VERSION = (2, 4, 0)
 SAMTOOLS_MIN_VERSION = (1, 9)
 
+# samtools releases whose `mpileup` can write bytes from freed memory into the
+# reference-base column. `mpileup()` resolves the reference once per reference
+# sequence and holds the pointer, while the read-ahead in `mplp_func()` keeps
+# calling `mplp_get_ref()`, whose three-slot cache free()s the buffer the outer
+# loop is still reading from. The corruption lands on the last bases of a
+# reference and varies between runs on identical input.
+#
+# It needs many short references with sparse, uneven coverage to show up, which
+# is exactly the shape of an SRST2 gene database, so SRST2 hits it when most
+# callers do not. Depending on what the freed memory happens to hold, a run
+# either dies while parsing the pileup or -- worse -- completes with wrong
+# reference bases, which turns reads that match the reference into mismatches
+# and changes which allele is called.
+#
+# Confirmed by bisection: 1.23.1 and earlier are fine, 1.23.2 and 1.24 are not.
+SAMTOOLS_BROKEN_MPILEUP_VERSIONS = ((1, 23, 2), (1, 24))
+
 
 def get_tool_version(command_list, command_name, version_regex):
     """Run a tool and return (version_tuple, version_string) parsed from its
@@ -964,12 +1156,27 @@ def check_bowtie_version():
 
 
 def check_samtools_version():
-    return require_min_version(
+    version_string = require_min_version(
         [get_samtools_exec()],
         "samtools",
         r"Version:\s*(\d+(?:\.\d+)+)",
         SAMTOOLS_MIN_VERSION,
     )
+    version_tuple = tuple(int(part) for part in version_string.split("."))
+    if version_tuple in SAMTOOLS_BROKEN_MPILEUP_VERSIONS:
+        # Warn rather than exit: the fault is intermittent, so many runs on this
+        # samtools are still correct, and refusing to start would be worse than
+        # letting the pileup checks in read_pileup_data catch a bad run.
+        logging.warning(
+            "samtools {found} writes freed memory into the reference-base column of "
+            "`mpileup` output for some inputs, which silently changes allele calls "
+            "or aborts the run. Use samtools <= 1.23.1, or a build patched for this "
+            "defect. SRST2 will stop with an explanatory error if it sees a "
+            "corrupted pileup, but it cannot detect every occurrence.".format(
+                found=version_string
+            )
+        )
+    return version_string
 
 
 def get_bowtie_execs():
@@ -1365,10 +1572,15 @@ def create_allele_pileup(allele_name, all_pileup_file):
         outpileup = all_pileup_file_dir + "/" + allele_name + "." + all_pileup_file_name
     else:
         outpileup = allele_name + "." + all_pileup_file
-    with open(outpileup, "w") as allele_pileup:
-        with open(all_pileup_file) as all_pileup:
+    # latin-1 for the same reason as parse_pileup_lines: this is samtools output
+    # being split back out per allele, and a stray byte anywhere in the file
+    # must not abort the run with an opaque UnicodeDecodeError. Only field 0 is
+    # inspected, and it is written back out byte-for-byte.
+    with open(outpileup, "w", encoding="latin-1") as allele_pileup:
+        with open(all_pileup_file, encoding="latin-1") as all_pileup:
             for line in all_pileup:
-                if line.split()[0] == allele_name:
+                fields = line.split()
+                if fields and fields[0] == allele_name:
                     allele_pileup.write(line)
     return outpileup
 
