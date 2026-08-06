@@ -11,6 +11,70 @@ for continued use.
 
 ## [Unreleased]
 
+## [1.0.0-rc.2] - 2026-08-06
+
+Hardening release. No change to typing results on well-formed input: this RC
+only replaces opaque crashes with errors that say what went wrong, so an RC
+already in validation can be re-cut without re-validating calls.
+
+### Fixed
+
+- SRST2 now fails with an explanation when the samtools pileup is malformed,
+  instead of dying on a bare `UnicodeDecodeError` or `ValueError` — or, worse,
+  carrying on with a wrong reference base.
+
+  samtools 1.23.2 introduced a use-after-free in `mpileup`: `mpileup()` holds a
+  pointer to the reference sequence for the whole reference, while the
+  read-ahead in `mplp_func()` keeps calling `mplp_get_ref()`, whose three-slot
+  cache `free()`s the buffer still in use. The last bases of a reference then
+  come out as whatever the freed memory holds, and the output differs between
+  runs on identical input. It takes a database of many short, unevenly covered
+  references to surface, which is exactly an SRST2 gene database — in one
+  160-sample PHoeNIx run, 5 samples died and the affected references differed
+  from run to run. Bisected: 1.23.1 clean, 1.23.2 and 1.24 affected.
+  **Use samtools <= 1.23.1.**
+
+  The pileup is now read as latin-1, so a stray byte cannot raise before SRST2
+  can report where it was, and every row is checked: column count, a reference
+  base that is actually a base, and numeric position and depth columns. Failures
+  raise `PileupFormatError` naming the file, the line, and the offending bytes,
+  and explaining the samtools defect. Note that a run which does *not* stop may
+  still be affected — when the freed memory holds an ordinary letter, the wrong
+  reference base is used silently and reads matching the reference are scored as
+  mismatches.
+
+  `PileupFormatError` subclasses `CommandError`, so the existing per-database
+  handler records the sample as "failed gene detection" and continues. One bad
+  pileup no longer aborts a batch, and the run still exits 0 and writes its
+  outputs — callers that only check the exit status no longer lose the sample
+  silently.
+
+- Same treatment for other bare exceptions on malformed input: an allele present
+  in the pileup but absent from the `.fai`; a pileup position outside the
+  reference (at position < 1 the old index wrapped to the far end of the depth
+  array instead of raising); an indel marker with no length after it; and a SAM
+  record naming a reference with no `@SQ` header line.
+
+- End-of-allele truncation penalty no longer reads `position_depths[-1]` when
+  the last covered position is 1, which mixed a depth from the other end of the
+  allele into the penalty.
+
+### Added
+
+- Startup warning when the samtools on `PATH` is a version known to corrupt
+  pileup output (1.23.2, 1.24).
+
+### Changed
+
+- `modify_bowtie_sam()` and `create_allele_pileup()` also read tool output as
+  latin-1, so a stray byte cannot abort a run with an opaque decode error.
+
+Known, unchanged: the internal-deletion penalty indexes on the last position of
+the allele rather than the deletion being scored, so every internal deletion
+reports the same `DepthNeighbouringTruncation`. Inherited from upstream;
+correcting it moves reported values, so it is deferred to the scoring changes
+gated on real-isolate validation.
+
 ## [1.0.0-rc.1] - 2026-07-19
 
 Release candidate for v1.0.0. Bundles the Round-2 correctness fixes and
