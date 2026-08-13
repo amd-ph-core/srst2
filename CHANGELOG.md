@@ -11,6 +11,55 @@ for continued use.
 
 ## [Unreleased]
 
+## [1.0.0-rc.3] - 2026-08-13
+
+Bug-fix release. No change to typing results: only the *names* of the
+per-allele pileup files change.
+
+### Fixed
+
+- Per-allele pileup filenames no longer contain apostrophes, which broke
+  workflow engines that interpolate output filenames into a shell string.
+
+  SRST2 names every per-allele pileup after its allele, and ResFinder
+  aminoglycoside names carry prime marks -- `aph(3'')-Ib`, `aac(6')-Ib`.
+  Nextflow's AWS Batch output unstaging builds one upload command per output
+  file as a string, wrapping the filename in single quotes, and then runs it
+  through `eval`:
+
+  ```bash
+  uploads+=("nxf_s3_upload '$name' s3://<workdir>")
+  ```
+
+  An odd number of apostrophes closes the quote early and the following `)` is
+  parsed as syntax (`syntax error near unexpected token ')'`); an even number
+  collapses to nothing and the file is uploaded under a silently mangled path.
+  Parentheses inside the quotes are harmless -- the apostrophe is the problem.
+  Every `SRST2_AR` task in a PHoeNIx v2.3.2 validation run failed this way.
+
+  Nextflow 25.04 began propagating unstage failures into the task exit status;
+  on 24.10 the same uploads had been failing silently. The offending line is
+  still present upstream as of Nextflow v25.10.0.
+
+  `create_allele_pileup()` now routes the allele name through
+  `encode_allele_for_filename()`, which maps `~` -> `~~` and `'` -> `~q`.
+  Escaping the escape character keeps the mapping injective, so two distinct
+  alleles can never be written to the same file, and it stays reversible:
+
+  ```python
+  re.sub(r"~([~q])", lambda m: "~" if m.group(1) == "~" else "'", name)
+  ```
+
+  It introduces no `.` or `_`, so callers that split a pileup filename into
+  fields still find them where they expect, and `~` is an RFC 3986 unreserved
+  character, so it survives S3 key handling and URI parsing untouched --
+  percent-encoding would not, since `%27` decodes straight back into an
+  apostrophe.
+
+  Only the filename is encoded. The allele name written into the pileup, into
+  the consensus FASTA headers and into the results tables is left exactly as
+  the database spells it.
+
 ## [1.0.0-rc.2] - 2026-08-06
 
 Hardening release. No change to typing results on well-formed input: this RC
