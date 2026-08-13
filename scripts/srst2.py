@@ -1564,14 +1564,52 @@ def get_allele_name_from_db(
     return gene_name, allele_name, cluster_id, seqid
 
 
+def encode_allele_for_filename(allele_name):
+    """Make an allele name safe to use as a filename component.
+
+    Allele names are database-supplied and routinely contain shell
+    metacharacters. ResFinder aminoglycoside names carry prime marks --
+    aph(3'')-Ib, aac(6')-Ib -- and the apostrophe is the dangerous one: a
+    workflow engine that interpolates output filenames into a shell string will
+    mis-parse them. Nextflow's AWS Batch unstaging, for example, builds one
+    upload command per output file as
+
+        uploads+=("nxf_s3_upload '$name' s3://<workdir>")
+
+    and then runs each through ``eval``. An odd number of apostrophes closes the
+    quote early and the following ``)`` is parsed as syntax; an even number
+    collapses to nothing and the file is silently uploaded under a mangled name.
+    Parentheses inside the quotes are harmless. Still unfixed upstream as of
+    Nextflow 25.10.0, so the safe move is to not emit the character at all.
+
+    The mapping escapes its own escape character, which makes it injective: two
+    distinct alleles can never be written to the same file. It is reversible,
+
+        re.sub(r"~([~q])", lambda m: "~" if m.group(1) == "~" else "'", name)
+
+    and it introduces no "." or "_", so any caller that splits a pileup filename
+    into fields still finds them where it expects. "~" is an RFC 3986 unreserved
+    character, so it also survives S3 key handling and URI parsing untouched --
+    percent-encoding would not, since %27 decodes straight back to an apostrophe.
+
+    Only the *filename* is encoded. The allele name written into the pileup
+    itself, into the consensus FASTA headers and into the results tables is left
+    exactly as the database spells it.
+    """
+    return allele_name.replace("~", "~~").replace("'", "~q")
+
+
 def create_allele_pileup(allele_name, all_pileup_file):
+    safe_allele_name = encode_allele_for_filename(allele_name)
     output_components = all_pileup_file.split("/")
     if len(output_components) > 1:
         all_pileup_file_name = os.path.basename(all_pileup_file)
         all_pileup_file_dir = os.path.dirname(all_pileup_file)
-        outpileup = all_pileup_file_dir + "/" + allele_name + "." + all_pileup_file_name
+        outpileup = (
+            all_pileup_file_dir + "/" + safe_allele_name + "." + all_pileup_file_name
+        )
     else:
-        outpileup = allele_name + "." + all_pileup_file
+        outpileup = safe_allele_name + "." + all_pileup_file
     # latin-1 for the same reason as parse_pileup_lines: this is samtools output
     # being split back out per allele, and a stray byte anywhere in the file
     # must not abort the run with an opaque UnicodeDecodeError. Only field 0 is
