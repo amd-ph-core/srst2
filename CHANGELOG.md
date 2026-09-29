@@ -11,10 +11,15 @@ for continued use.
 
 ## [Unreleased]
 
-## [1.0.0-rc.3] - 2026-08-13
+## [1.0.0] - 2026-09-29
 
-Bug-fix release. No change to typing results: only the *names* of the
-per-allele pileup files change.
+First stable release. Contents are identical to `1.0.0-rc.3`; the release
+candidate tags for this line are superseded and `v1.0.0-rc.3` has been
+removed. The `1.0.0-rc.2` and `1.0.0-rc.1` entries below remain as the
+record of what this release accumulated.
+
+Carried from `1.0.0-rc.3` -- a bug fix with no change to typing results:
+only the *names* of the per-allele pileup files change.
 
 ### Fixed
 
@@ -338,7 +343,8 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
   allele names containing a dot (e.g. `NG_047667.1`) no longer raise
   `IndexError`. Reproduces the first inline "jvhagey" production patch. ([#5])
 
-[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v1.0.0-rc.1...dev
+[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v1.0.0...dev
+[1.0.0]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...v1.0.0
 [1.0.0-rc.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...v1.0.0-rc.1
 [0.3.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/amd-ph-core/srst2/compare/v0.2.0...v0.3.0
