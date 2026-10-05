@@ -70,8 +70,6 @@ Contents
 
 [Typing the LEE pathogenicity island of E. coli](#typing-the-lee-pathogenicity-island-of-e-coli)
 
-[Plotting output in R](#plotting-output-in-r)
-
 [Example - Shigella sonnei public data](example.txt)
 
 Current release
@@ -881,53 +879,3 @@ ERR178156 | 9* | 6* | 5* | 5* | 3* | 3* | 4* | 8 | eae-6/4snp;tir-5/18snp;espA-5
 #### Interpretation
 
 ERR178148 and ERR178156 carry LEE subtypes 30 and 9 respectively, which both belong to LEE lineage 3. The imprecise matches are to be expected and can be taken as a confident assignment of LEE type.
-
-### Plotting output in R
-
-Some R functions are provided in scripts/plotSRST2data.R for plotting SRST2 output to produce images like those in the paper (e.g. Figure 8: http://www.genomemedicine.com/content/6/11/90/figure/F8)
-
-These functions require the `ape` package to be installed.
-
-Example usage:
-
-```
-# load the functions in R
-source("srst2/scripts/plotSRST2data.R")
-
-1. EXAMPLE FROM FIGURE 8A (http://www.genomemedicine.com/content/6/11/90/figure/F8): viewing resistance genes in individual strains that have been analysed for MLST + resistance genes
-
-# read in a compiled MLST + genes table output by SRST2
-Ef_JAMA<-read.delim("srst2/data/EfaeciumJAMA__compiledResults.txt", stringsAsFactors = F)
-
-# Check column names. Sample names are in column 1 (strain_names=1 in the function call below), MLST data is in columns 2 to 9 (mlst_columns = 2:9), while gene presence/absence information is recorded in columns 13 to 31 (gene_columns = 13:31). 
-
-colnames(Ef_JAMA)
- [1] "Sample"         "ST"             "AtpA"           "Ddl"            "Gdh"            "PurK"          
- [7] "Gyd"            "PstS"           "Adk"            "mismatches"     "uncertainty"    "depth"         
-[13] "Aac6.Aph2_AGly" "Aac6.Ii_AGly"   "Ant6.Ia_AGly"   "Aph3.III_AGly"  "Dfr_Tmt"        "ErmB_MLS"      
-[19] "ErmC_MLS"       "MsrC_MLS"       "Sat4A_AGly"     "TetL_Tet"       "TetM_Tet"       "TetU_Tet"      
-[25] "VanA_Gly"       "VanH.Pt_Gly"    "VanR.A_Gly"     "VanS.A_Gly"     "VanX.M_Gly"     "VanY.A_Gly"    
-[31] "VanZ.A_Gly"    
-
-# Make a tree based on the MLST loci, and plot gene content as a matrix. 
-# cluster=T turns on hierarchical clustering of the columns (=genes); labelHeight, infoWidth and treeWidth control the relative dimensions of the plotting areas available for the tree, printed MLST information, and gene labels.
-
-geneContentPlot(m=Ef_JAMA, mlst_columns = 2:9, gene_columns = 13:31, strain_names=1, cluster=T, labelHeight=40, infoWidth=15, treeWidth=5)
-
-2. EXAMPLE FROM FIGURE 7C (http://www.genomemedicine.com/content/6/11/90/figure/F7): viewing summaries of resistance genes by ST, in a set of isolates that have been analysed for MLST + resistance genes
-
-# read in a compiled MLST + genes table output by SRST2
-Ef_Howden<-read.delim("srst2/data/EfaeciumHowden__compiledResults.txt", stringsAsFactors = F)
-
-# Make a tree of STs based on the MLST alleles and plot this; Group isolates by ST and calculate the number of strains in each ST that contain each resistance gene;  plot these counts as a heatmap. Note that barplots of the number of strains in each ST are also plotted to the right.
-geneSTplot(d,mlst_columns=8:15,gene_columns=17:59,plot_type="count",cluster=T)
-
-# Same as above but plot the rate of detection of each gene within each ST, not the raw counts
-geneSTplot(d,mlst_columns=8:15,gene_columns=17:59,plot_type="rate",cluster=T)
-
-# To suppress SNPs, i.e. collapse ST1 and ST1* into a single group for summarisation at the clonal complex level, set suppressSNPs=T.
-
-# To suppress uncertainty due to low depth, i.e. collapse ST1 and ST1? into a single group for summarisation at the clonal complex level, set suppressUncertainty=T.
-```
-
-Note, heatmap colours can be set via the `matrix.colours` parameter in both of these functions. The default value is matrix.colours=colorRampPalette(c("white","yellow","blue"),space="rgb")(100), i.e. white=0% gene frequency, yellow = 50% and blue = 100%.

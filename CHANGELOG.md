@@ -11,6 +11,36 @@ for continued use.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-05
+
+Housekeeping release. No change to typing results, the command line or the
+installed package: only files that were never installed or exercised are
+removed.
+
+### Removed
+
+- The R plotting helper `scripts/plotSRST2data.R`, its "Plotting output in R"
+  README section, and the two example tables only that section read
+  (`data/EfaeciumHowden__compiledResults.txt`,
+  `data/EfaeciumJAMA__compiledResults.txt`).
+
+  The script is upstream's plotting code for the figures in the 2014 SRST2
+  paper. It was last changed upstream in June 2014 and was outside the scope of
+  this fork's Python 3 port, so it shipped here untouched and untested:
+
+  - nothing in the package calls it, and `setup.py` does not install it;
+  - no test covers it;
+  - it requires R and the `ape` package, which neither `pip install` nor any
+    container built from this repository provides;
+  - the README example was already broken: its second call plots a variable,
+    `d`, that it never defines.
+
+  Keeping it implied a supported R interface that does not exist, and container
+  builds that bundle the full distribution were copying a dead R file into
+  Python-only images. The original remains available in
+  [katholt/srst2](https://github.com/katholt/srst2/blob/master/scripts/plotSRST2data.R)
+  for anyone who still uses it.
+
 ## [1.0.0] - 2026-09-29
 
 First stable release. Contents are identical to `1.0.0-rc.3`; the release
@@ -343,7 +373,8 @@ compatibility. All bundled scripts are maintained, not just `srst2.py`.
   allele names containing a dot (e.g. `NG_047667.1`) no longer raise
   `IndexError`. Reproduces the first inline "jvhagey" production patch. ([#5])
 
-[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v1.0.0...dev
+[Unreleased]: https://github.com/amd-ph-core/srst2/compare/v1.0.1...dev
+[1.0.1]: https://github.com/amd-ph-core/srst2/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...v1.0.0
 [1.0.0-rc.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.1...v1.0.0-rc.1
 [0.3.1]: https://github.com/amd-ph-core/srst2/compare/v0.3.0...v0.3.1
